@@ -1,0 +1,391 @@
+/* 
+================================================
+FICHIER: auth.css - Styles authentification EcoRide
+Développé par: [Votre nom]
+Description: Styles pour les pages de connexion et inscription
+================================================
+*/
+
+/* Variables globales pour cohérence */
+:root {
+    --ecoride-primary: #4B6B52;
+    --ecoride-secondary: #3d5943;
+    --ecoride-light: #F5F8FA;
+    --ecoride-border: #e9ecef;
+    --ecoride-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* =====================================
+   SECTION AUTHENTIFICATION
+   ===================================== */
+.auth-section {
+    background: var(--ecoride-light);
+    min-height: 100vh;
+    padding: 60px 0;
+    display: flex;
+    align-items: center;
+}
+
+/* =====================================
+   EN-TÊTE DES PAGES AUTH
+   ===================================== */
+.auth-header {
+    margin-bottom: 32px;
+}
+
+.auth-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #2D2D2D;
+    margin-bottom: 12px;
+}
+
+.auth-title i {
+    margin-right: 12px;
+    font-size: 2rem;
+}
+
+.auth-subtitle {
+    font-size: 1.1rem;
+    color: #6B6B6B;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+
+/* =====================================
+   CARTE PRINCIPALE
+   ===================================== */
+.auth-card {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: var(--ecoride-shadow);
+    border: 1px solid var(--ecoride-border);
+}
+
+/* =====================================
+   FORMULAIRES
+   ===================================== */
+.auth-form .form-label {
+    font-weight: 600;
+    color: #2D2D2D;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.auth-form .form-label i {
+    margin-right: 8px;
+    color: var(--ecoride-primary);
+    width: 16px; /* Alignement uniforme des icônes */
+    text-align: center;
+}
+
+/* Champs de saisie */
+.auth-form .form-control {
+    border: 2px solid var(--ecoride-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.auth-form .form-control:focus {
+    border-color: var(--ecoride-primary);
+    box-shadow: 0 0 0 0.2rem rgba(75, 107, 82, 0.25);
+}
+
+/* États de validation */
+.auth-form .form-control.is-valid {
+    border-color: #28a745;
+}
+
+.auth-form .form-control.is-invalid {
+    border-color: #dc3545;
+}
+
+/* Textes d'aide */
+.auth-form .form-text {
+    color: #6B6B6B;
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+/* Messages d'erreur */
+.auth-form .invalid-feedback {
+    color: #dc3545;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+/* =====================================
+   BOUTONS
+   ===================================== */
+.auth-form .btn {
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    padding: 12px 24px;
+    transition: all 0.3s;
+}
+
+.auth-form .btn-success {
+    background-color: var(--ecoride-primary);
+    border-color: var(--ecoride-primary);
+}
+
+.auth-form .btn-success:hover {
+    background-color: var(--ecoride-secondary);
+    border-color: var(--ecoride-secondary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(75, 107, 82, 0.3);
+}
+
+.auth-form .btn-success:focus {
+    box-shadow: 0 0 0 0.2rem rgba(75, 107, 82, 0.25);
+}
+
+/* =====================================
+   INFORMATIONS ET BADGES
+   ===================================== */
+.auth-info {
+    background: var(--ecoride-light);
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid var(--ecoride-primary);
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.auth-info i {
+    margin-right: 8px;
+    font-size: 1.1rem;
+}
+
+.auth-info strong {
+    color: #2D2D2D;
+}
+
+/* =====================================
+   PIED DE CARTE (LIENS)
+   ===================================== */
+.auth-footer {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--ecoride-border);
+}
+
+.auth-link {
+    color: var(--ecoride-primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s;
+}
+
+.auth-link:hover {
+    color: var(--ecoride-secondary);
+    text-decoration: underline;
+}
+
+/* =====================================
+   MESSAGES D'ALERTE
+   ===================================== */
+.alert {
+    border-radius: 8px;
+    border: none;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-size: 0.95rem;
+}
+
+.alert i {
+    margin-right: 8px;
+    font-size: 1.1rem;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+.alert-info {
+    background-color: #cce7ff;
+    color: #004085;
+    border-left: 4px solid #007bff;
+}
+
+/* =====================================
+   AFFICHAGE DES CRÉDITS (DETAIL.PHP)
+   ===================================== */
+.user-credits-display {
+    border: 2px solid var(--ecoride-primary);
+    background: linear-gradient(135deg, #f8f9fa, var(--ecoride-light));
+    margin-bottom: 20px;
+}
+
+.user-credits-display i {
+    font-size: 1.2rem;
+    margin-right: 8px;
+}
+
+.user-credits-display strong {
+    color: var(--ecoride-primary);
+    font-size: 1.1rem;
+}
+
+.user-credits-display small {
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+/* =====================================
+   RESPONSIVE DESIGN
+   ===================================== */
+
+/* Tablettes */
+@media (max-width: 768px) {
+    .auth-section {
+        padding: 40px 0;
+    }
+    
+    .auth-card {
+        padding: 32px 24px;
+        margin: 0 16px;
+    }
+    
+    .auth-title {
+        font-size: 1.8rem;
+    }
+    
+    .auth-subtitle {
+        font-size: 1rem;
+    }
+    
+    .auth-form .form-control {
+        padding: 12px 14px;
+    }
+    
+    .auth-form .btn {
+        padding: 14px 20px;
+        font-size: 1rem;
+    }
+}
+
+/* Smartphones */
+@media (max-width: 576px) {
+    .auth-section {
+        padding: 20px 0;
+    }
+    
+    .auth-card {
+        padding: 24px 20px;
+        margin: 0 12px;
+        border-radius: 12px;
+    }
+    
+    .auth-title {
+        font-size: 1.6rem;
+    }
+    
+    .auth-title i {
+        font-size: 1.5rem;
+        margin-right: 8px;
+    }
+    
+    .auth-subtitle {
+        font-size: 0.95rem;
+    }
+    
+    .auth-form .form-control {
+        padding: 12px;
+        font-size: 0.95rem;
+    }
+    
+    .auth-form .btn {
+        width: 100%;
+        padding: 14px;
+        font-size: 1rem;
+    }
+    
+    .auth-info {
+        padding: 14px;
+        font-size: 0.9rem;
+    }
+    
+    .user-credits-display {
+        padding: 12px;
+        font-size: 0.9rem;
+    }
+}
+
+/* =====================================
+   ANIMATIONS SUBTILES
+   ===================================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.auth-card {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* =====================================
+   ACCESSIBILITÉ
+   ===================================== */
+
+/* Focus visible pour navigation clavier */
+.auth-form .form-control:focus,
+.auth-form .btn:focus,
+.auth-link:focus {
+    outline: 3px solid var(--ecoride-primary);
+    outline-offset: 2px;
+}
+
+/* Amélioration contraste */
+@media (prefers-contrast: high) {
+    .auth-subtitle,
+    .form-text,
+    .invalid-feedback {
+        color: #4A4A4A;
+    }
+}
+
+/* Respect préférences mouvement */
+@media (prefers-reduced-motion: reduce) {
+    .auth-card,
+    .auth-form .btn,
+    .auth-form .form-control {
+        animation: none;
+        transition: none;
+    }
+}
+
+/*
+================================================
+UTILISATION:
+
+Dans register.php ou login.php, ajouter:
+$extra_css = ['auth.css'];
+
+Classes principales à utiliser:
+- .auth-section (section principale)
+- .auth-card (carte du formulaire)
+- .auth-form (formulaire)
+- .auth-info (informations/badges)
+- .user-credits-display (affichage crédits)
+================================================
+*/

@@ -1,0 +1,94 @@
+/* ========== PARAMÈTRES GÉNÉRAUX ========== */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #F5F8FA;
+    margin: 0;
+    padding: 0;
+}
+
+/* ========== NAVBAR ========== */
+.navbar {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: white !important;
+}
+
+.navbar-brand {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #4B6B52 !important;
+    letter-spacing: 0.5px;
+}
+
+.navbar-brand i {
+    color: #4B6B52;
+    margin-right: 8px;
+}
+
+.navbar-nav .nav-link {
+    color: #2D2D2D !important;
+    font-weight: 500;
+    margin: 0 10px;
+    transition: color 0.3s;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #4B6B52 !important;
+}
+
+.btn-connexion {
+    background-color: #4B6B52 !important;
+    border-color: #4B6B52 !important;
+    color: white !important;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+}
+
+.btn-connexion:hover {
+    background-color: #3d5943 !important;
+    border-color: #3d5943 !important;
+}
+
+
+
+/* ========== FOOTER ========== */
+.footer {
+    background: #2D2D2D;
+    color: white;
+    padding: 40px 0;
+}
+
+.footer p {
+    margin-bottom: 8px;
+}
+
+.footer a {
+    color: #4B6B52;
+    text-decoration: none;
+}
+
+.footer a:hover {
+    color: #5ea06b;
+    text-decoration: underline;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2.5rem;
+    }
+
+    .hero-slogan {
+        font-size: 1.1rem;
+    }
+
+    .search-box {
+        margin: 0 15px;
+        padding: 24px;
+    }
+
+    .why-ecoride-section h2,
+    .temoignages-section h2 {
+        font-size: 2rem;
+    }
+}

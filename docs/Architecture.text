@@ -1,0 +1,70 @@
+ecoride/
+├── 📁 config/
+│   ├── database.php          # Configuration BDD
+│   └── constants.php         # Constantes globales
+│
+├── 📁 pages/
+│   ├── home.php             # Page d'accueil
+│   ├── search.php           # Recherche covoiturages
+│   ├── detail.php           # Détail d'un trajet
+│   ├── login.php            # Connexion
+│   ├── register.php         # Inscription
+│   ├── profile.php          # Espace utilisateur
+│   └── create-trip.php      # Créer un trajet
+│
+├── 📁 includes/
+│   ├── header.php           # <head> + metas
+│   ├── navbar.php           # Navigation
+│   ├── footer.php           # Pied de page
+│   └── functions.php        # Fonctions utilitaires
+│
+├── 📁 assets/
+│   ├── 📁 css/
+│   │   ├── style.css        # CSS principal
+│   │   └── components.css   # Composants réutilisables
+│   ├── 📁 js/
+│   │   ├── main.js          # JavaScript principal
+│   │   └── form-validation.js
+│   └── 📁 img/
+│       ├── logo.png
+│       ├── mockup-mobile.png
+│       └── testimonials/
+│
+├── 📁 sql/
+│   ├── create_database.sql  # Création BDD
+│   ├── create_tables.sql    # Structure tables
+│   └── insert_data.sql      # Données de test
+│
+├── 📁 controllers/
+│   ├── AuthController.php   # Gestion authentification
+│   ├── TripController.php   # Gestion trajets
+│   └── UserController.php   # Gestion utilisateurs
+│
+├── 📁 models/
+│   ├── User.php            # Modèle utilisateur
+│   ├── Trip.php            # Modèle trajet
+│   └── Database.php        # Classe de connexion BDD
+│
+├── 📁 docs/
+│   ├── charte_graphique.pdf
+│   ├── documentation_technique.pdf
+│   └── manuel_utilisateur.pdf
+│
+├── index.php               # Point d'entrée + router
+├── .htaccess              # Configuration Apache
+└── README.md              # Documentation projet
+
+EXPLICATION DE L'ARCHITECTURE :
+
+🎯 POURQUOI CETTE STRUCTURE ?
+1. Séparation des responsabilités (MVC léger)
+2. Facilité de maintenance
+3. Respect des bonnes pratiques ECF
+4. Évolutivité du projet
+
+🔧 COMPOSANTS CLÉS :
+- index.php = Router central (toutes les requêtes passent par lui)
+- config/ = Paramètres globaux
+- pages/ = Vues (HTML + PHP)
+- controllers/ = Logique métier
+- models/ = Interactions BDD

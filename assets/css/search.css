@@ -1,0 +1,630 @@
+/* 
+================================================
+FICHIER: search.css - Page de recherche EcoRide
+Développé par: [Votre nom]
+Description: Styles pour la page de recherche de trajets
+================================================
+*/
+
+/* Variables globales pour la cohérence des couleurs */
+:root {
+    --ecoride-primary: #4B6B52;    /* Vert principal */
+    --ecoride-secondary: #3d5943;  /* Vert foncé pour hover */
+    --ecoride-light: #F5F8FA;      /* Gris clair arrière-plan */
+}
+
+/* =====================================
+   SECTION HERO (en-tête avec formulaire)
+   ===================================== */
+.search-hero-section {
+    background: linear-gradient(135deg, var(--ecoride-primary) 0%, var(--ecoride-secondary) 100%);
+    color: white;
+    padding: 60px 0;
+}
+
+.search-hero-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.search-hero-subtitle {
+    font-size: 1.2rem;
+    text-align: center;
+    margin-bottom: 40px;
+    opacity: 0.9; /* Légèrement transparent pour le style */
+}
+
+/* =====================================
+   FORMULAIRE DE RECHERCHE
+   ===================================== */
+.search-form-container {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15); /* Ombre portée */
+    color: #2D2D2D;
+}
+
+/* Styles des champs de saisie */
+.search-input {
+    border: 2px solid #DDE2E5;
+    border-radius: 8px;
+    padding: 12px 16px;
+    transition: border-color 0.3s; /* Animation douce sur focus */
+}
+
+.search-input:focus {
+    border-color: var(--ecoride-primary);
+    box-shadow: 0 0 0 0.2rem rgba(75, 107, 82, 0.25); /* Halo vert au focus */
+}
+
+/* Bouton de recherche principal */
+.btn-search-primary {
+    background-color: var(--ecoride-primary);
+    border-color: var(--ecoride-primary);
+    color: white;
+    font-weight: 600;
+    padding: 12px 32px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    transition: all 0.3s; /* Animation sur hover */
+}
+
+.btn-search-primary:hover {
+    background-color: var(--ecoride-secondary);
+    border-color: var(--ecoride-secondary);
+    color: white;
+    transform: translateY(-2px); /* Léger effet de levée */
+}
+
+/* =====================================
+   SECTION DES RÉSULTATS
+   ===================================== */
+.search-results-section {
+    background: var(--ecoride-light);
+    padding: 40px 0 80px;
+}
+
+/* =====================================
+   SIDEBAR DES FILTRES
+   ===================================== */
+.filtres-sidebar {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    position: sticky; /* Reste en place au scroll */
+    top: 20px;
+}
+
+.filtres-titre {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--ecoride-primary);
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--ecoride-light);
+    padding-bottom: 8px;
+}
+
+.filtres-info {
+    background: var(--ecoride-light);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #6B6B6B;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Groupes de filtres */
+.filtre-group {
+    margin-bottom: 20px;
+}
+
+.filtre-label {
+    font-weight: 600;
+    color: #2D2D2D;
+    margin-bottom: 8px;
+    display: block;
+    font-size: 0.9rem;
+}
+
+.filtre-input {
+    border: 1px solid #DDE2E5;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    transition: border-color 0.3s;
+}
+
+.filtre-input:focus {
+    border-color: var(--ecoride-primary);
+    box-shadow: 0 0 0 0.2rem rgba(75, 107, 82, 0.15);
+}
+
+/* =====================================
+   EN-TÊTE DES RÉSULTATS
+   ===================================== */
+.resultats-header {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.resultats-titre {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2D2D2D;
+    margin-bottom: 8px;
+}
+
+/* Badges des filtres actifs */
+.filtres-actifs {
+    margin-top: 12px;
+}
+
+.filtres-actifs .badge {
+    margin-left: 8px;
+    font-size: 0.8rem;
+}
+
+/* =====================================
+   CARTES DES TRAJETS
+   ===================================== */
+.trips-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px; /* Espacement entre les cartes */
+}
+
+/* Carte individuelle d'un trajet */
+.trip-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s; /* Animation sur hover */
+    border: 1px solid #e9ecef;
+}
+
+.trip-card:hover {
+    transform: translateY(-4px); /* Effet de levée au survol */
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    border-color: var(--ecoride-primary);
+}
+
+/* =====================================
+   MISE EN PAGE DES COLONNES
+   ===================================== */
+/* Répartition: 33% route - 33% conducteur - 33% prix */
+.trip-card .col-md-6:first-child {
+    flex: 0 0 auto;
+    width: 33.333333%; /* 4 colonnes Bootstrap */
+}
+
+.trip-card .col-md-3:first-of-type {
+    flex: 0 0 auto;
+    width: 33.333333%; /* 4 colonnes Bootstrap */
+    display: flex;
+    justify-content: center; /* Centre le conducteur */
+}
+
+.trip-card .col-md-3:last-child {
+    flex: 0 0 auto;
+    width: 33.333333%; /* 4 colonnes Bootstrap */
+}
+
+/* =====================================
+   SECTION ROUTE ET HORAIRES
+   ===================================== */
+.trip-route {
+    margin-bottom: 8px;
+}
+
+/* Titre du trajet (ex: Paris → Lyon) */
+.route-cities {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #2D2D2D;
+    margin-bottom: 8px;
+    margin-right: 20px; /* Évite collision avec conducteur */
+}
+
+.route-cities .fa-arrow-right {
+    font-size: 1rem;
+    margin: 0 8px;
+}
+
+/* Date et heure du départ */
+.route-time {
+    color: #6B6B6B;
+    margin-bottom: 0;
+    font-size: 1rem;
+}
+
+.route-time i {
+    color: var(--ecoride-primary);
+    margin-right: 4px;
+}
+
+/* =====================================
+   SECTION CONDUCTEUR
+   ===================================== */
+.trip-driver {
+    padding: 8px 0;
+    width: 100%;
+    display: flex;
+    justify-content: center; /* Centre dans sa colonne */
+}
+
+.driver-info {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Espace entre avatar et détails */
+    text-align: left;
+}
+
+/* Avatar du conducteur (cercle avec initiale) */
+.driver-avatar {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;  /* Empêche la déformation */
+    min-height: 48px; /* Empêche la déformation */
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--ecoride-primary), #5ea06b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 1.2rem;
+    box-shadow: 0 2px 8px rgba(75, 107, 82, 0.3);
+    flex-shrink: 0; /* Ne se déforme jamais */
+}
+
+/* Détails du conducteur */
+.driver-details {
+    line-height: 1.3; /* Rapproche les lignes */
+    min-width: 140px; /* Largeur mini pour le contenu */
+}
+
+.driver-details strong {
+    color: #2D2D2D;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+}
+
+/* Note du conducteur avec étoiles */
+.driver-rating {
+    display: flex;
+    align-items: center;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    font-size: 0.85rem;
+}
+
+.driver-rating .stars {
+    color: #FFD700; /* Jaune doré pour les étoiles */
+    margin-right: 6px;
+}
+
+.driver-rating .rating-text {
+    color: #6B6B6B;
+    font-size: 0.8rem;
+}
+
+/* =====================================
+   VÉHICULE ET BADGE ÉCOLOGIQUE
+   ===================================== */
+.vehicle-info {
+    display: inline-flex; /* FORCE tout sur une ligne */
+    align-items: center;
+    gap: 6px;
+    margin-top: 0;
+    flex-wrap: nowrap; /* Empêche retour à la ligne */
+}
+
+.vehicle-info small {
+    white-space: nowrap; /* Force "Tesla Model 3" sur une ligne */
+    display: inline; /* Force inline */
+}
+
+/* Badge écologique (⚡Eco en ligne, pas en colonne) */
+.eco-badge {
+    background: var(--ecoride-primary);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: inline-block; /* FORCE en ligne à côté du texte */
+    margin-left: 4px; /* Petit espace avant le badge */
+    white-space: nowrap; /* Garde ⚡Eco ensemble */
+}
+
+/* =====================================
+   SECTION PRIX ET RÉSERVATION
+   ===================================== */
+.trip-booking {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Centre verticalement */
+}
+
+.trip-price {
+    margin-bottom: 6px;
+}
+
+/* Prix affiché en grand */
+.price-amount {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--ecoride-primary);
+}
+
+.price-label {
+    color: #6B6B6B;
+    display: block;
+    font-size: 0.9rem;
+}
+
+/* Nombre de places disponibles */
+.trip-seats {
+    color: #6B6B6B;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+}
+
+.trip-seats i {
+    color: var(--ecoride-primary);
+    margin-right: 4px;
+}
+
+/* =====================================
+   PRÉFÉRENCES ET BOUTON
+   ===================================== */
+.trip-preferences {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between; /* Préférences à gauche, bouton à droite */
+    align-items: center;
+    gap: 16px;
+}
+
+/* Conteneur des préférences */
+.preferences-content {
+    flex: 1; /* Prend l'espace disponible */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Badge des préférences avec limitation de texte */
+.preferences-badge {
+    background: #f8f9fa;
+    color: #6B6B6B;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-right: 6px;
+    
+    /* Si le texte est trop long, on coupe avec "..." */
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trip-preferences .btn {
+    flex-shrink: 0; /* Le bouton garde toujours sa taille */
+}
+
+.trip-preferences i {
+    color: var(--ecoride-primary);
+}
+
+/* =====================================
+   PAGE SANS RÉSULTATS
+   ===================================== */
+.no-results {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.no-results .fa-search {
+    color: #DDE2E5;
+}
+
+.no-results h3 {
+    color: #6B6B6B;
+}
+
+.no-results ul li {
+    color: #6B6B6B;
+    margin-bottom: 8px;
+}
+
+/* =====================================
+   RECHERCHES POPULAIRES
+   ===================================== */
+.search-suggestions {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.search-suggestions h3 {
+    color: #2D2D2D;
+    font-weight: 600;
+}
+
+.search-suggestions .btn-outline-success {
+    border-color: var(--ecoride-primary);
+    color: var(--ecoride-primary);
+    margin: 4px;
+}
+
+.search-suggestions .btn-outline-success:hover {
+    background-color: var(--ecoride-primary);
+    border-color: var(--ecoride-primary);
+}
+
+/* =====================================
+   RESPONSIVE DESIGN
+   ===================================== */
+
+/* Tablettes et petits écrans */
+@media (max-width: 768px) {
+    .search-hero-title {
+        font-size: 2rem;
+    }
+    
+    .search-form-container {
+        margin: 0 15px;
+        padding: 24px;
+    }
+    
+    /* Les filtres ne sont plus sticky sur mobile */
+    .filtres-sidebar {
+        position: static;
+        margin-bottom: 24px;
+    }
+    
+    .resultats-header {
+        margin: 0 0 24px;
+        padding: 20px;
+    }
+    
+    .trip-card {
+        padding: 16px 20px;
+    }
+    
+    /* Sur mobile, retour à la mise en page normale (colonnes pleines) */
+    .trip-card .col-md-6:first-child,
+    .trip-card .col-md-3:first-of-type,
+    .trip-card .col-md-3:last-child {
+        width: 100%;
+        flex: 0 0 auto;
+    }
+    
+    .trip-driver {
+        padding: 6px 0;
+        justify-content: flex-start; /* Aligné à gauche sur mobile */
+    }
+    
+    .driver-avatar {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        min-height: 42px;
+        font-size: 1.1rem;
+    }
+    
+    .driver-details {
+        min-width: 120px;
+    }
+    
+    .driver-details strong {
+        font-size: 1rem;
+    }
+    
+    .route-cities {
+        font-size: 1.2rem;
+        margin-right: 10px;
+    }
+    
+    .price-amount {
+        font-size: 1.6rem;
+    }
+    
+    .trip-booking {
+        text-align: left;
+        margin-top: 12px;
+    }
+    
+    /* Préférences en colonne sur mobile */
+    .trip-preferences {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .trip-preferences .btn {
+        width: 100%; /* Bouton pleine largeur sur mobile */
+    }
+}
+
+/* Smartphones */
+@media (max-width: 576px) {
+    .search-hero-section {
+        padding: 40px 0;
+    }
+    
+    .search-form-container {
+        padding: 20px;
+    }
+    
+    .btn-search-primary {
+        width: 100%;
+        padding: 12px;
+    }
+    
+    .trip-card {
+        padding: 16px;
+    }
+    
+    .resultats-titre {
+        font-size: 1.3rem;
+    }
+    
+    .preferences-badge {
+        max-width: 150px; /* Moins d'espace sur petit écran */
+    }
+}
+
+/* =====================================
+   ANIMATIONS
+   ===================================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Animation d'apparition des cartes */
+.trip-card {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.trip-card:nth-child(1) { animation-delay: 0.1s; }
+.trip-card:nth-child(2) { animation-delay: 0.2s; }
+.trip-card:nth-child(3) { animation-delay: 0.3s; }
+
+/* =====================================
+   COULEURS COHÉRENTES BOOTSTRAP
+   ===================================== */
+.badge.bg-success {
+    background-color: var(--ecoride-primary) !important;
+}
+
+.btn-outline-success:hover {
+    background-color: var(--ecoride-primary);
+    border-color: var(--ecoride-primary);
+    color: white;
+}

@@ -1,0 +1,5 @@
+*.log 
+*.tmp 
+.DS_Store 
+test-password.php 
+test-database.php 
