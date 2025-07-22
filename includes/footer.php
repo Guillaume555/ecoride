@@ -116,5 +116,4 @@
 // - Liens vers les réseaux sociaux
 
 // Utilisé pour : uniformiser le pied de page et renforcer l’image de marque
-
 ?>

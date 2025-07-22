@@ -2,7 +2,6 @@
 /*
 ================================================
 FICHIER: pages/contact.php - Contact EcoRide
-Développé par: Guillaume
 Description: Page de contact avec formulaire
 ================================================
 */

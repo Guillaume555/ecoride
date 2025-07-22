@@ -2,7 +2,6 @@
 /*
 ================================================
 FICHIER: pages/about.php - À propos EcoRide (VERSION REFONTE)
-Développé par: Guillaume
 Description: Présentation professionnelle de l'entreprise EcoRide
 ================================================
 */
