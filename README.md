@@ -42,9 +42,9 @@ cd ecoride
 
 ## Comptes de test
 
-- Passager : demo@passenger.com / password123
-- Conducteur : demo@driver.com / password123
-- Administrateur : admin@ecoride.fr / password123
+- Passager : marie@email.com / password123
+- Conducteur : demo@driver.com / password123                //pas encores operationnelles
+- Administrateur : admin@ecoride.fr / password123           //pas encores operationnelles
 
 ## Technologies utilisées
 
