@@ -1,11 +1,8 @@
 <?php
-/*
-================================================
+/* ================================================
 FICHIER: pages/login.php - Page de connexion EcoRide
-Développé par: [Votre nom]
 Description: Formulaire de connexion avec validation sécurisée
-================================================
-*/
+================================================ */
 
 // Inclusion des fonctions de session
 require_once 'includes/session.php';
@@ -14,6 +11,8 @@ require_once 'config/database.php';
 // Configuration de la page
 $page_title = "EcoRide - Connexion";
 $extra_css = ['auth.css'];
+$extra_js = ['login.js']; //Js spécifique a la page
+
 
 // Si l'utilisateur est déjà connecté, redirection
 if (isLoggedIn()) {
@@ -255,91 +254,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </section>
 <?php endif; ?>
 
-<script>
-    /*
-================================================
-JAVASCRIPT POUR LA CONNEXION
-================================================
-*/
-
-    // Auto-focus sur le champ email si vide
-    document.addEventListener('DOMContentLoaded', function() {
-        const emailField = document.getElementById('email');
-        if (emailField && emailField.value === '') {
-            emailField.focus();
-        }
-    });
-
-    // Validation simple côté client
-    document.querySelector('.auth-form').addEventListener('submit', function(e) {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-
-        if (!email || !password) {
-            e.preventDefault();
-            alert('Veuillez remplir tous les champs obligatoires.');
-            return false;
-        }
-
-        if (!email.includes('@')) {
-            e.preventDefault();
-            alert('Veuillez saisir une adresse email valide.');
-            return false;
-        }
-    });
-
-    // Affichage/masquage du mot de passe
-    document.getElementById('togglePassword').addEventListener('click', function() {
-        const passwordField = document.getElementById('password');
-        const eyeIcon = document.getElementById('eyeIcon');
-
-        if (passwordField.type === 'password') {
-            passwordField.type = 'text';
-            eyeIcon.classList.remove('fa-eye');
-            eyeIcon.classList.add('fa-eye-slash');
-        } else {
-            passwordField.type = 'password';
-            eyeIcon.classList.remove('fa-eye-slash');
-            eyeIcon.classList.add('fa-eye');
-        }
-    });
-</script>
-
 <?php
 /*
-================================================
-NOTES DE DÉVELOPPEMENT:
+Résumé du fichier : page de connexion utilisateur
 
-1. FONCTIONNALITÉS IMPLÉMENTÉES:
-   ✅ Formulaire de connexion avec validation
-   ✅ Vérification email + mot de passe
-   ✅ Gestion des comptes inactifs
-   ✅ Messages d'erreur précis
-   ✅ Redirection intelligente après connexion
-   ✅ "Se souvenir de moi" avec cookies sécurisés
-   ✅ Comptes de démonstration (localhost)
+Fonction principale :
+Affiche un formulaire de connexion sécurisé, avec gestion du message d’erreur et des redirections après login.
 
-2. SÉCURITÉ:
-   ✅ Vérification password_verify()
-   ✅ Protection contre timing attacks
-   ✅ Cookies sécurisés (HttpOnly)
-   ✅ Validation côté serveur + client
-   ✅ Échappement de toutes les données
+Éléments traités :
+- Validation email/mot de passe avec password_verify()
+- Vérification de l’activation du compte
+- Connexion persistante via cookie sécurisé si "se souvenir de moi"
+- Redirection vers la page précédente ou d’accueil après succès
+- Affichage des messages d’erreur clairs
+- Pré-remplissage de l’email en cas d’échec
 
-3. UX/UI:
-   ✅ Auto-focus sur email
-   ✅ Conservation email en cas d'erreur
-   ✅ Messages clairs et utiles
-   ✅ Liens vers inscription et récupération
-   ✅ Design cohérent avec register.php
+Sécurité :
+- Échappement des entrées utilisateur
+- Cookies HttpOnly
+- Validation côté serveur
+- Protection contre les attaques temporelles
 
-4. INTÉGRATION:
-   ✅ Utilise includes/session.php
-   ✅ Compatible avec le router
-   ✅ Prêt pour auth.css
-   ✅ Gestion redirection après login
-
-PROCHAINE ÉTAPE: Tester le parcours complet inscription → connexion → navigation
-================================================
+Connexion à l’écosystème :
+- Utilise `includes/session.php`
+- Compatible avec le router de l'application
+- Prêt pour intégrer le CSS `auth.css` si présent
 */
 ?>

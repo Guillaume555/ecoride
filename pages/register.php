@@ -13,6 +13,8 @@ require_once 'config/database.php';
 // Configuration de la page
 $page_title = "EcoRide - Inscription";
 $extra_css = ['auth.css']; // CSS spécifique authentification
+$extra_js = ['register.js']; //Js spécifique a la page
+
 
 // Variables pour gérer les erreurs et messages
 $errors = [];
@@ -125,9 +127,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':phone' => $phone ?: null
             ]);
 
+            // Après l'insertion en BDD réussie (ligne ~90)
             if ($result) {
+                // ✅ LOG MONGODB - INSCRIPTION
+                $new_user_id = $pdo->lastInsertId();
+                logActivity($new_user_id, 'register', [
+                    'username' => $username,
+                    'email' => $email
+                ]);
+
                 // Succès de l'inscription
-                $success_message = "Inscription réussie ! Vous avez reçu 20 crédits de bienvenue. Vous allez être redirigé vers la page de connexion.";
+                $success_message = "Inscription réussie !...";
 
                 // Redirection différée vers login
                 echo '<script>
@@ -313,35 +323,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 </section>
-
-<script>
-    /*
-================================================
-JAVASCRIPT POUR L'INSCRIPTION
-================================================
-*/
-
-    // Validation en temps réel de la confirmation de mot de passe
-    document.addEventListener('DOMContentLoaded', function() {
-        const password = document.getElementById('password');
-        const passwordConfirm = document.getElementById('password_confirm');
-
-        function checkPasswordMatch() {
-            if (passwordConfirm.value && password.value !== passwordConfirm.value) {
-                passwordConfirm.setCustomValidity('Les mots de passe ne correspondent pas');
-                passwordConfirm.classList.add('is-invalid');
-            } else {
-                passwordConfirm.setCustomValidity('');
-                passwordConfirm.classList.remove('is-invalid');
-            }
-        }
-
-        if (password && passwordConfirm) {
-            password.addEventListener('input', checkPasswordMatch);
-            passwordConfirm.addEventListener('input', checkPasswordMatch);
-        }
-    });
-</script>
 
 <?php
 /*

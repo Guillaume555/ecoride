@@ -314,9 +314,8 @@ $page_title = "EcoRide - Accueil";
 </section>
 
 <?php
-// REMARQUES :
-// 1. Plus de balises HTML (<html>, <head>, <body>)
-// 2. SEULEMENT le contenu spécifique à l'accueil
-// 3. Le formulaire envoie vers ?page=search
-// 4. Variable $page_title définie pour le header
+// Page d’accueil uniquement : contenu HTML spécifique sans balises globales
+// Le formulaire de recherche redirige vers la page de résultats
+// La variable $page_title est définie avant l’inclusion du header
+
 ?>

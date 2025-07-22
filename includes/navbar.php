@@ -99,10 +99,16 @@ $current_page = $_GET['page'] ?? 'home';
 </nav>
 
 <?php
-// FONCTIONNALITÉS DE CETTE NAVBAR :
-// 1. Responsive (hamburger menu mobile)
-// 2. Page active mise en évidence
-// 3. Menu différent selon si connecté ou pas
-// 4. Icons pour améliorer l'UX
-// 5. Dropdown pour l'utilisateur connecté
+/*
+Fichier utilisé pour afficher une barre de navigation responsive.
+
+Fonctionnalités :
+- Affiche les liens principaux du site (Accueil, Covoiturages, etc.)
+- Adapte l’affichage selon que l’utilisateur est connecté ou non :
+  - S’il est connecté : affichage du pseudo, du nombre de crédits et d’un menu déroulant
+  - Sinon : boutons Connexion / Inscription
+- Le lien actif est mis en surbrillance automatiquement selon la page en cours
+
+Ce fichier est chargé dans toutes les pages via index.php.
+*/
 ?>

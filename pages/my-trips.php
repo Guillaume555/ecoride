@@ -23,38 +23,29 @@ $user = getCurrentUser();
 $success_message = '';
 $error_message = '';
 
-// Traitement des actions (annulation de trajet)
+// VOTRE CODE ACTUEL (lignes 15-60 environ)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     $trip_id = $_POST['trip_id'] ?? null;
     $booking_id = $_POST['booking_id'] ?? null;
 
     if ($action === 'cancel_trip' && $trip_id) {
-        // Annuler un trajet en tant que conducteur
         try {
             $stmt = $pdo->prepare("UPDATE trips SET status = 'cancelled' WHERE id = :trip_id AND driver_id = :user_id");
             $result = $stmt->execute([':trip_id' => $trip_id, ':user_id' => $user['id']]);
 
             if ($result) {
                 $success_message = "Trajet annulé avec succès.";
-                // TODO: Envoyer notification aux passagers
+                // ✅ AJOUTER CETTE LIGNE
+                header('Location: ?page=my-trips&success=trip_cancelled');
+                exit;
             }
         } catch (Exception $e) {
             $error_message = "Erreur lors de l'annulation du trajet.";
         }
     } elseif ($action === 'cancel_booking' && $booking_id) {
-        // Annuler une réservation en tant que passager
         try {
-            // Récupérer les détails de la réservation
-            $stmt = $pdo->prepare("
-                SELECT b.total_price, b.seats_booked, t.available_seats 
-                FROM bookings b 
-                JOIN trips t ON b.trip_id = t.id 
-                WHERE b.id = :booking_id AND b.passenger_id = :user_id
-            ");
-            $stmt->execute([':booking_id' => $booking_id, ':user_id' => $user['id']]);
-            $booking = $stmt->fetch();
-
+            // Votre code existant...
             if ($booking) {
                 // Annuler la réservation
                 $stmt = $pdo->prepare("UPDATE bookings SET status = 'cancelled' WHERE id = :booking_id");
@@ -66,13 +57,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 // Rembourser les crédits
                 updateUserCredits($user['credits'] + $booking['total_price']);
-                $user = getCurrentUser(); // Recharger les données
 
-                $success_message = "Réservation annulée avec succès. Vos crédits ont été remboursés.";
+                // ✅ AJOUTER CETTE LIGNE
+                header('Location: ?page=my-trips&success=booking_cancelled');
+                exit;
             }
         } catch (Exception $e) {
             $error_message = "Erreur lors de l'annulation de la réservation.";
         }
+    }
+}
+
+// ✅ AJOUTER CE BLOC APRÈS LE TRAITEMENT POST (ligne 65 environ)
+// Gestion messages depuis URL
+if (isset($_GET['success'])) {
+    switch ($_GET['success']) {
+        case 'trip_cancelled':
+            $success_message = "Trajet annulé avec succès.";
+            break;
+        case 'booking_cancelled':
+            $success_message = "Réservation annulée avec succès. Vos crédits ont été remboursés.";
+            break;
     }
 }
 

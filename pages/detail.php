@@ -2,7 +2,6 @@
 /*
 ================================================
 FICHIER: pages/detail.php - Page détail d'un trajet
-Développé par: [Votre nom]
 Description: Affichage détaillé d'un trajet avec toutes les infos
 ================================================
 */
@@ -13,6 +12,7 @@ require_once 'config/database.php';
 // Configuration de la page
 $page_title = "EcoRide - Détail du trajet";
 $extra_css = ['detail.css']; // CSS spécifique à cette page
+$extra_js = ['detail.js']; //Js spécifique a la page
 
 // Traitement de la réservation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reserve'])) {
@@ -314,7 +314,7 @@ try {
                                 <form id="bookingForm">
                                     <div class="mb-3">
                                         <label for="seats" class="form-label">Nombre de places</label>
-                                        <select class="form-select" id="seats" name="seats">
+                                        <select class="form-select" id="seats" name="seats" data-price-per-seat="<?= $trip['price_per_seat'] ?>">
                                             <?php for ($i = 1; $i <= min(4, $trip['available_seats']); $i++): ?>
                                                 <option value="<?= $i ?>"><?= $i ?> place<?= $i > 1 ? 's' : '' ?></option>
                                             <?php endfor; ?>
@@ -360,72 +360,26 @@ try {
             </div>
 </section>
 
-<script>
-    /*
-================================================
-JAVASCRIPT POUR LA PAGE DÉTAIL
-================================================
-*/
-
-    // Calcul automatique du prix total
-    document.getElementById('seats').addEventListener('change', function() {
-        const seats = parseInt(this.value);
-        const pricePerSeat = <?= $trip['price_per_seat'] ?>;
-        const total = seats * pricePerSeat;
-        document.getElementById('total-price').textContent = total + '€';
-    });
-
-    // Fonction pour la réservation (redirection vers login)
-    function requireLogin() {
-        alert('Vous devez vous connecter pour réserver un trajet.');
-        // En attendant le système d'auth, redirection vers une page de login
-        window.location.href = '?page=login';
-    }
-
-    // Animation au scroll pour les cartes
-    window.addEventListener('scroll', function() {
-        const cards = document.querySelectorAll('.detail-card');
-        cards.forEach(card => {
-            const cardTop = card.getBoundingClientRect().top;
-            const windowHeight = window.innerHeight;
-
-            if (cardTop < windowHeight * 0.8) {
-                card.classList.add('card-visible');
-            }
-        });
-    });
-</script>
-
 <?php
 /*
-================================================
-NOTES DE DÉVELOPPEMENT:
+Résumé du fichier : pages/detail.php
 
-1. FONCTIONNALITÉS IMPLÉMENTÉES:
-   ✅ Affichage complet du trajet avec toutes les infos
-   ✅ Profil détaillé du conducteur avec note
-   ✅ Informations complètes du véhicule
-   ✅ Préférences du conducteur
-   ✅ Liste des avis sur le conducteur
-   ✅ Panneau de réservation avec calcul prix
-   ✅ Responsive design
+Cette page affiche tous les détails d’un trajet sélectionné par l’utilisateur :
+- Informations générales (villes, horaire, tarif, places restantes)
+- Profil du conducteur, note moyenne, badges et crédits
+- Détails du véhicule associé au trajet
+- Préférences spécifiques du conducteur (si renseignées)
+- Avis des passagers précédents
+- Formulaire de réservation avec calcul dynamique du prix total
 
-2. À FAIRE PLUS TARD:
-   - Intégrer le vrai système de connexion
-   - Implémenter le processus de réservation
-   - Ajouter photos du véhicule
-   - Système de messagerie conducteur/passager
+La page est sécurisée contre les accès invalides (ID de trajet manquant ou inexistant), et toutes les données sont échappées.
 
-3. SÉCURITÉ:
-   - Vérification existence du trajet
-   - Échappement de toutes les données utilisateur
-   - Redirection si trajet non trouvé
+Améliorations à prévoir :
+- Connecter à la base réelle le système de réservation
+- Remplacer la simulation par un enregistrement en BDD
+- Ajouter une messagerie conducteur/passager
+- Intégrer les photos du véhicule si disponible
 
-4. UX/UI:
-   - Bouton retour fonctionnel
-   - Calcul prix en temps réel
-   - Animations au scroll
-   - Design cohérent avec la recherche
-================================================
+Ce fichier utilise un CSS et un JS spécifiques : `detail.css` et `detail.js`.
 */
 ?>

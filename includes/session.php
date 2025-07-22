@@ -2,7 +2,6 @@
 /*
 ================================================
 FICHIER: includes/session.php - Gestion des sessions EcoRide
-Développé par: [Votre nom]
 Description: Fonctions centralisées pour la gestion des sessions utilisateur
 ================================================
 */
@@ -14,6 +13,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Inclusion de la configuration base de données
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/mongodb.php';
 
 /**
  * Vérifie si un utilisateur est connecté
@@ -22,6 +22,23 @@ require_once __DIR__ . '/../config/database.php';
 function isLoggedIn()
 {
     return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+}
+
+function logUserConnection($user_id, $action)
+{
+    // Simulation MongoDB - logs en fichier JSON
+    $log = [
+        'user_id' => $user_id,
+        'action' => $action, // 'login', 'logout', 'register'
+        'timestamp' => date('Y-m-d H:i:s'),
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'localhost'
+    ];
+
+    file_put_contents(
+        'logs/user_activity.json',
+        json_encode($log) . "\n",
+        FILE_APPEND
+    );
 }
 
 /**
@@ -46,6 +63,12 @@ function loginUser($user_data)
     $_SESSION['role'] = $user_data['role'];
     $_SESSION['login_time'] = time();
 
+    //  LOG MONGODB - CONNEXION
+    logActivity($user_data['id'], 'login', [
+        'username' => $user_data['username'],
+        'role' => $user_data['role']
+    ]);
+
     return true;
 }
 
@@ -54,6 +77,11 @@ function loginUser($user_data)
  */
 function logoutUser()
 {
+    //  LOG MONGODB - DÉCONNEXION
+    if (isLoggedIn()) {
+        logActivity($_SESSION['user_id'], 'logout');
+    }
+
     // Destruction de toutes les variables de session
     $_SESSION = array();
 
@@ -299,39 +327,22 @@ function checkRememberMeLogin()
     }
 }
 
+//============================
 /*
-================================================
-NOTES DE DÉVELOPPEMENT:
+Ce fichier centralise toutes les fonctions liées à la gestion des sessions utilisateur :
 
-1. FONCTIONNALITÉS IMPLÉMENTÉES:
-   ✅ Vérification connexion utilisateur
-   ✅ Connexion/déconnexion sécurisée
-   ✅ Gestion données utilisateur en session
-   ✅ Mise à jour crédits (session + BDD)
-   ✅ Protection pages avec redirection
-   ✅ Expiration automatique des sessions
-   ✅ Rafraîchissement données depuis BDD
-   ✅ Vérification des rôles utilisateur
+- Connexion et déconnexion sécurisées (avec régénération de l'ID de session)
+- Stockage des informations utilisateur dans la session (id, rôle, crédits, etc.)
+- Vérification de statut connecté via isLoggedIn()
+- Chargement des données depuis la base en cas de besoin
+- Expiration automatique de session (timeout), suppression des cookies, et protection contre le vol de session
+- Journalisation des actions utilisateur (login, logout...) dans un fichier JSON via MongoDB ou fallback
 
-2. SÉCURITÉ:
-   ✅ Régénération ID session à la connexion
-   ✅ Destruction complète session/cookies
-   ✅ Timeout automatique (2h par défaut)
-   ✅ Vérification utilisateur actif
-   ✅ Protection contre session hijacking
+Utilisation recommandée :
+require_once 'includes/session.php';
 
-3. UTILISATION:
-   require_once 'includes/session.php';
-   
-   if (isLoggedIn()) {
-       $user = getCurrentUser();
-       echo "Bonjour " . $user['username'];
-   }
-
-4. INTÉGRATION:
-   ✅ Compatible avec structure existante
-   ✅ Gestion des erreurs et logs
-   ✅ Fonctions réutilisables
-   ✅ Code documenté et maintenable
-================================================
+if (isLoggedIn()) {
+    $user = getCurrentUser();
+    // Utilisation des données utilisateur
+}
 */

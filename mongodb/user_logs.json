@@ -1,0 +1,58 @@
+[
+    {
+        "user_id": 1,
+        "action": "login",
+        "timestamp": "2025-07-21 10:30:15",
+        "ip": "127.0.0.1",
+        "browser": "Chrome"
+    },
+    {
+        "user_id": 2,
+        "action": "register",
+        "timestamp": "2025-07-21 10:45:22",
+        "ip": "127.0.0.1",
+        "browser": "Firefox"
+    },
+    {
+        "id": "687ef402dfa95",
+        "user_id": 1,
+        "action": "login",
+        "details": {
+            "username": "marie_dupont",
+            "role": "passenger"
+        },
+        "timestamp": "2025-07-22 02:14:26",
+        "ip": "::1",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36"
+    },
+    {
+        "id": "687f2e235e9ef",
+        "user_id": 1,
+        "action": "logout",
+        "details": [],
+        "timestamp": "2025-07-22 06:22:27",
+        "ip": "::1",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36"
+    },
+    {
+        "id": "687f2e2b32049",
+        "user_id": 1,
+        "action": "login",
+        "details": {
+            "username": "marie_dupont",
+            "role": "passenger"
+        },
+        "timestamp": "2025-07-22 06:22:35",
+        "ip": "::1",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36"
+    },
+    {
+        "id": "687f3ba74ecc5",
+        "user_id": 1,
+        "action": "logout",
+        "details": [],
+        "timestamp": "2025-07-22 07:20:07",
+        "ip": "::1",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36"
+    }
+]

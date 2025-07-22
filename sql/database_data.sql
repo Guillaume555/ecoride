@@ -1,14 +1,11 @@
--- ========================================
--- ECORIDE - DONNÉES DE TEST
--- Fichier: sql/database_data.sql
--- Description: Données de démonstration pour l'ECF
--- ========================================
+-- Fichier : database_data.sql
+-- Contenu : jeu de données d'exemple pour les tests EcoRide (utilisateurs, trajets, véhicules, etc.)
+-- À importer dans la base "ecoride"
 
 USE ecoride;
 
--- ========================================
--- DONNÉES DE TEST - UTILISATEURS
--- ========================================
+-- Données de test : utilisateurs
+
 -- Mots de passe : password123 (hachage à faire lors de l'installation)
 INSERT INTO
     users (
@@ -52,9 +49,7 @@ VALUES (
         'admin'
     );
 
--- ========================================
--- DONNÉES DE TEST - VÉHICULES
--- ========================================
+-- Données de test : véhicules
 INSERT INTO
     vehicles (
         user_id,
@@ -97,9 +92,7 @@ VALUES (
         2019
     );
 
--- ========================================
--- DONNÉES DE TEST - TRAJETS
--- ========================================
+-- Données de test : trajets
 INSERT INTO
     trips (
         driver_id,
@@ -157,9 +150,7 @@ VALUES (
         'active'
     );
 
--- ========================================
--- DONNÉES DE TEST - RÉSERVATIONS
--- ========================================
+-- Données de test : réservations
 INSERT INTO
     bookings (
         trip_id,
@@ -186,9 +177,7 @@ VALUES (
         'paid'
     );
 
--- ========================================
--- DONNÉES DE TEST - AVIS
--- ========================================
+-- Données de test : avis
 INSERT INTO
     reviews (
         trip_id,
@@ -215,23 +204,19 @@ VALUES (
         TRUE
     );
 
--- ========================================
--- COMPTES DE DÉMONSTRATION ECF
--- ========================================
-/*
-IDENTIFIANTS POUR TESTS ECF :
+-- ================================================
+-- Comptes de démonstration pour les tests manuels :
 
-PASSAGER :
-- Email: demo@passenger.com
-- Mot de passe: password123
+-- Utilisateur passager
+-- Email : demo@passenger.com
+-- Mot de passe : password123
 
-CONDUCTEUR :
-- Email: demo@driver.com  
-- Mot de passe: password123
+-- Utilisateur conducteur
+-- Email : demo@driver.com
+-- Mot de passe : password123
 
-ADMIN :
-- Email: admin@ecoride.fr
-- Mot de passe: password123
+-- Administrateur
+-- Email : admin@ecoride.fr
+-- Mot de passe : password123
 
-Tous les mots de passe sont hachés avec password_hash() PHP
-*/
+-- NB : tous les mots de passe sont déjà hachés avec password_hash() en PHP

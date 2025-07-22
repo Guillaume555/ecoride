@@ -94,9 +94,9 @@
 <script src="assets/js/main.js"></script>
 
 <!-- JS spécifique à la page (optionnel) -->
-<?php if (isset($extra_js)): ?>
+<?php if (isset($extra_js) && is_array($extra_js)): ?>
     <?php foreach ($extra_js as $js_file): ?>
-        <script src="assets/js/<?= $js_file ?>"></script>
+        <script src="assets/js/<?= $js_file ?>" defer></script>
     <?php endforeach; ?>
 <?php endif; ?>
 
@@ -106,8 +106,15 @@
 </html>
 
 <?php
-// COMMENT UTILISER DANS VOS PAGES :
-// 
-// $extra_js = ['form-validation.js', 'search.js'];
-// include 'includes/footer.php';
+// Fichier appelé en bas de toutes les pages du site.
+
+// Contenu :
+// - Présentation courte de la plateforme
+// - Liens de navigation rapide
+// - Raccourcis vers les pages de services
+// - Coordonnées de contact (email, téléphone)
+// - Liens vers les réseaux sociaux
+
+// Utilisé pour : uniformiser le pied de page et renforcer l’image de marque
+
 ?>

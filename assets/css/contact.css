@@ -1,0 +1,179 @@
+ /* Hero Contact */
+    .contact-hero {
+        background: linear-gradient(135deg, #4B6B52 0%, #3d5943 100%);
+        color: white;
+        padding: 80px 0;
+    }
+
+    .contact-section {
+        background: #F5F8FA;
+        padding: 80px 0;
+    }
+
+    /* Formulaire */
+    .contact-form-card {
+        background: white;
+        border-radius: 16px;
+        padding: 40px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+
+    .contact-form-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2D2D2D;
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #F5F8FA;
+    }
+
+    .contact-input {
+        border: 2px solid #DDE2E5;
+        border-radius: 8px;
+        padding: 12px 16px;
+        transition: border-color 0.3s;
+    }
+
+    .contact-input:focus {
+        border-color: #4B6B52;
+        box-shadow: 0 0 0 0.2rem rgba(75, 107, 82, 0.25);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #2D2D2D;
+        margin-bottom: 8px;
+    }
+
+    .form-label i {
+        color: #4B6B52;
+        margin-right: 8px;
+    }
+
+    .btn-contact-primary {
+        background-color: #4B6B52;
+        border-color: #4B6B52;
+        color: white;
+        font-weight: 600;
+        padding: 12px 30px;
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+
+    .btn-contact-primary:hover {
+        background-color: #3d5943;
+        border-color: #3d5943;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    /* Informations contact */
+    .contact-info-card,
+    .contact-faq-card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .contact-info-title,
+    .faq-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #2D2D2D;
+        margin-bottom: 25px;
+    }
+
+    .contact-info-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .contact-info-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+
+    .contact-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #4B6B52;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        margin-right: 15px;
+        flex-shrink: 0;
+    }
+
+    .contact-details h6 {
+        font-weight: 600;
+        color: #2D2D2D;
+        margin-bottom: 5px;
+    }
+
+    .contact-details p {
+        color: #6B6B6B;
+        margin-bottom: 0;
+        line-height: 1.5;
+    }
+
+    .contact-details a {
+        color: #4B6B52;
+        text-decoration: none;
+    }
+
+    .contact-details a:hover {
+        text-decoration: underline;
+    }
+
+    /* FAQ */
+    .faq-item {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .faq-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+
+    .faq-item strong {
+        color: #2D2D2D;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .faq-item p {
+        color: #6B6B6B;
+        margin-bottom: 0;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .contact-hero {
+            padding: 60px 0;
+        }
+
+        .contact-section {
+            padding: 60px 0;
+        }
+
+        .contact-form-card {
+            padding: 30px 20px;
+        }
+
+        .contact-info-card,
+        .contact-faq-card {
+            padding: 25px 20px;
+        }
+    }

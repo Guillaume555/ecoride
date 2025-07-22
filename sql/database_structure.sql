@@ -1,17 +1,12 @@
--- ========================================
--- ECORIDE - STRUCTURE BASE DE DONNÉES
--- Fichier: sql/database_structure.sql
--- Description: Structure des tables (sans données)
--- ========================================
+-- Structure de la base de données EcoRide
+-- Ce fichier crée les tables principales du projet (sans données).
 
 -- Créer la base de données
 CREATE DATABASE IF NOT EXISTS ecoride;
 
 USE ecoride;
 
--- ========================================
 -- TABLE 1: USERS (Utilisateurs)
--- ========================================
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -28,9 +23,7 @@ CREATE TABLE users (
     is_active BOOLEAN DEFAULT TRUE
 );
 
--- ========================================
 -- TABLE 2: VEHICLES (Véhicules)
--- ========================================
 CREATE TABLE vehicles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -50,9 +43,7 @@ CREATE TABLE vehicles (
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
--- ========================================
 -- TABLE 3: TRIPS (Trajets)
--- ========================================
 CREATE TABLE trips (
     id INT AUTO_INCREMENT PRIMARY KEY,
     driver_id INT NOT NULL,
@@ -73,9 +64,7 @@ CREATE TABLE trips (
     FOREIGN KEY (vehicle_id) REFERENCES vehicles (id) ON DELETE CASCADE
 );
 
--- ========================================
 -- TABLE 4: BOOKINGS (Réservations)
--- ========================================
 CREATE TABLE bookings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     trip_id INT NOT NULL,
@@ -93,9 +82,7 @@ CREATE TABLE bookings (
     FOREIGN KEY (passenger_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
--- ========================================
 -- TABLE 5: REVIEWS (Avis)
--- ========================================
 CREATE TABLE reviews (
     id INT AUTO_INCREMENT PRIMARY KEY,
     trip_id INT NOT NULL,
@@ -110,9 +97,7 @@ CREATE TABLE reviews (
     FOREIGN KEY (reviewed_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
--- ========================================
 -- INDEX POUR PERFORMANCES
--- ========================================
 CREATE INDEX idx_trips_cities ON trips (departure_city, arrival_city);
 
 CREATE INDEX idx_trips_date ON trips (departure_time);

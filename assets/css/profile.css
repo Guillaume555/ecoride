@@ -1,0 +1,101 @@
+ /* Styles spécifiques pour la page profil */
+.user-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4B6B52, #5ea06b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 2rem;
+    margin: 0 auto;
+    box-shadow: 0 4px 12px rgba(75, 107, 82, 0.3);
+}
+
+.stat-card {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s;
+    border: 1px solid #e9ecef;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.stat-info h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #2D2D2D;
+}
+
+.stat-info p {
+    margin: 0;
+    color: #6B6B6B;
+    font-size: 0.9rem;
+}
+
+.transaction-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.transaction-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.transaction-item:last-child {
+    border-bottom: none;
+}
+
+.transaction-icon {
+    margin-right: 12px;
+    font-size: 1.2rem;
+}
+
+.transaction-details {
+    flex: 1;
+}
+
+.transaction-details h6 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.transaction-amount {
+    font-weight: 600;
+}
+
+.member-info {
+    border-left: 4px solid #4B6B52;
+}
+
+@media (max-width: 768px) {
+    .user-avatar-large {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+
+    .stat-card {
+        padding: 15px;
+    }
+
+    .stat-info h3 {
+        font-size: 1.5rem;
+    }
+}
