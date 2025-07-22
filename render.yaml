@@ -1,0 +1,9 @@
+# render.yaml
+services:
+  - type: web
+    name: ecoride
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        sync: false
