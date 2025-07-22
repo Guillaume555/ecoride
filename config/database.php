@@ -3,29 +3,42 @@
 // Fichier de configuration pour la base de données
 // Contient la connexion PDO et des fonctions utiles pour le projet
 
-// Connexion locale avec Laragon (localhost)
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'ecoride');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+// Configuration pour production (Aiven) et local (Laragon)
+if (getenv('DB_HOST')) {
+    // Production (Render + Aiven)
+    define('DB_HOST', getenv('DB_HOST'));
+    define('DB_PORT', getenv('DB_PORT'));
+    define('DB_NAME', getenv('DB_NAME'));
+    define('DB_USER', getenv('DB_USER'));
+    define('DB_PASS', getenv('DB_PASS'));
+    $ssl_required = getenv('DB_SSL') === 'true';
+} else {
+    // Local (Laragon)
+    define('DB_HOST', 'localhost');
+    define('DB_PORT', '3306');
+    define('DB_NAME', 'ecoride');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    $ssl_required = false;
+}
 
 try {
-    // Connexion à la base avec PDO
-    $pdo = new PDO(
-        "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
-        DB_USER,
-        DB_PASS,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, // Affiche les erreurs SQL sous forme d'exception
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, // Résultats sous forme de tableaux associatifs
-            PDO::ATTR_EMULATE_PREPARES => false // Utilise les vraies requêtes préparées (meilleure sécurité)
-        ]
-    );
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false
+    ];
+
+    if ($ssl_required) {
+        $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+    }
+
+    $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
 
     // Message de confirmation (utile pendant le dev, à commenter en prod)
     // echo "Connexion à la base réussie";
 } catch (PDOException $e) {
-    // Affiche un message en cas d'échec de connexion
     die("Erreur de connexion : " . $e->getMessage());
 }
 
