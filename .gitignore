@@ -3,3 +3,8 @@
 .DS_Store 
 test-password.php 
 test-database.php 
+.env
+ca.pem
+ping-bdd.php
+/vendor/
+*.pem
