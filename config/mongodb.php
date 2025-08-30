@@ -1,123 +1,311 @@
 <?php
-/*
-================================================
-FICHIER: config/mongodb.php - Connexion MongoDB EcoRide
-Description: Gestion logs utilisateur en NoSQL
-================================================
-*/
 
-class MongoDBLogger
+/**
+ * EcoRide - Configuration & Logger MongoDB Atlas
+ * Requiert : extension php_mongodb + "composer require mongodb/mongodb vlucas/phpdotenv"
+ */
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use MongoDB\Client;
+use MongoDB\BSON\UTCDateTime;
+use MongoDB\Collection;
+use Dotenv\Dotenv;
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Charge les variables d'environnement (.env)
+$dotenv = Dotenv::createImmutable(dirname(__DIR__));
+$dotenv->safeLoad();
+
+final class MongoDBLogger
 {
-    private $logs_file;
+    /** URI chargée depuis .env → MONGO_URI */
+    private static function uri(): string
+    {
+        $uri = $_ENV['MONGO_URI'] ?? getenv('MONGO_URI') ?? '';
+        if ($uri === '') {
+            throw new \RuntimeException('MONGO_URI manquante. Ajoutez-la dans le fichier .env à la racine.');
+        }
+        return $uri;
+    }
+
+    private const DATABASE_NAME   = 'ecoride';
+    private const COLLECTION_NAME = 'user_activities';
+
+    private Client $client;
+    private \MongoDB\Database $database;
+    private Collection $collection;
+    private bool $isConnected = false;
 
     public function __construct()
     {
-        $this->logs_file = __DIR__ . '/../mongodb/user_logs.json';
+        $this->connect();
+    }
 
-        // Créer le fichier s'il n'existe pas
-        if (!file_exists($this->logs_file)) {
-            file_put_contents($this->logs_file, '[]');
+    /** Connexion + index */
+    private function connect(): void
+    {
+        try {
+            $this->client = new Client(self::uri(), [
+                'retryWrites' => true,
+                'w' => 'majority',
+                'serverSelectionTimeoutMS' => 3000,
+                'socketTimeoutMS' => 5000,
+            ]);
+
+            $this->database   = $this->client->selectDatabase(self::DATABASE_NAME);
+            $this->collection = $this->database->selectCollection(self::COLLECTION_NAME);
+
+            // Index idempotents
+            $this->collection->createIndex(['user_id' => 1]);
+            $this->collection->createIndex(['action' => 1]);
+            $this->collection->createIndex(['timestamp' => -1]);
+
+            // Test de connectivité
+            $this->database->command(['ping' => 1]);
+            $this->isConnected = true;
+        } catch (\Throwable $e) {
+            error_log('MongoDB Connection Error: ' . $e->getMessage());
+            $this->isConnected = false;
         }
     }
 
-    /**
-     * Ajouter un log d'activité utilisateur
-     */
-    public function logUserActivity($user_id, $action, $details = [])
-    {
-        $log_entry = [
-            'id' => uniqid(),
-            'user_id' => $user_id,
-            'action' => $action,
-            'details' => $details,
-            'timestamp' => date('Y-m-d H:i:s'),
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? 'localhost',
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
-        ];
-
-        // Lire les logs existants
-        $existing_logs = $this->getLogs();
-
-        // Ajouter le nouveau log
-        $existing_logs[] = $log_entry;
-
-        // Garder seulement les 100 derniers logs (performance)
-        if (count($existing_logs) > 100) {
-            $existing_logs = array_slice($existing_logs, -100);
+    /** Enregistrer une activité utilisateur */
+    public function logActivity(
+        int $userId,
+        string $action,
+        array|string $details = [],
+        ?string $userAgent = null,
+        ?string $ip = null
+    ): string|false {
+        if (!$this->isConnected) {
+            return $this->fallbackToJson($userId, $action, $details, $userAgent, $ip);
         }
 
-        // Sauvegarder
-        file_put_contents($this->logs_file, json_encode($existing_logs, JSON_PRETTY_PRINT));
+        try {
+            $now = new UTCDateTime(); // now en ms UTC
 
-        return true;
+            $document = [
+                'user_id'    => $userId,
+                'action'     => $action,
+                'details'    => $details,
+                'timestamp'  => $now,
+                'ip'         => $ip ?: ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'),
+                'user_agent' => $userAgent ?: ($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'),
+                'session_id' => session_id() ?: null,
+            ];
+
+            $res = $this->collection->insertOne($document);
+            return (string)$res->getInsertedId();
+        } catch (\Throwable $e) {
+            error_log('MongoDB Insert Error: ' . $e->getMessage());
+            return $this->fallbackToJson($userId, $action, $details, $userAgent, $ip);
+        }
     }
 
-    /**
-     * Récupérer tous les logs
-     */
-    public function getLogs($limit = null)
+    /** Récupérer les logs avec pagination */
+    public function getLogs(int $limit = 50, int $skip = 0, ?int $userId = null): array
     {
-        $logs = json_decode(file_get_contents($this->logs_file), true) ?? [];
-
-        if ($limit) {
-            return array_slice($logs, -$limit);
+        if (!$this->isConnected) {
+            return $this->getLogsFromJson();
         }
 
-        return $logs;
-    }
-
-    /**
-     * Récupérer les logs d'un utilisateur
-     */
-    public function getUserLogs($user_id, $limit = 10)
-    {
-        $all_logs = $this->getLogs();
-        $user_logs = array_filter($all_logs, function ($log) use ($user_id) {
-            return $log['user_id'] == $user_id;
-        });
-
-        return array_slice($user_logs, -$limit);
-    }
-
-    /**
-     * Statistiques d'activité
-     */
-    public function getActivityStats()
-    {
-        $logs = $this->getLogs();
-
-        $stats = [
-            'total_activities' => count($logs),
-            'unique_users' => count(array_unique(array_column($logs, 'user_id'))),
-            'actions' => [],
-            'today_activities' => 0
-        ];
-
-        $today = date('Y-m-d');
-
-        foreach ($logs as $log) {
-            // Compter par action
-            $action = $log['action'];
-            $stats['actions'][$action] = ($stats['actions'][$action] ?? 0) + 1;
-
-            // Activités d'aujourd'hui
-            if (strpos($log['timestamp'], $today) === 0) {
-                $stats['today_activities']++;
+        try {
+            $filter = [];
+            if ($userId !== null) {
+                $filter['user_id'] = $userId;
             }
+
+            $options = [
+                'sort'  => ['timestamp' => -1],
+                'limit' => $limit,
+                'skip'  => $skip,
+            ];
+
+            $cursor = $this->collection->find($filter, $options);
+            $logs   = [];
+
+            foreach ($cursor as $doc) {
+                $logs[] = [
+                    'id'         => (string)$doc['_id'],
+                    'user_id'    => $doc['user_id'] ?? null,
+                    'action'     => $doc['action']  ?? null,
+                    'details'    => $doc['details'] ?? [],
+                    'timestamp'  => isset($doc['timestamp']) && $doc['timestamp'] instanceof UTCDateTime
+                        ? $doc['timestamp']->toDateTime()->format('Y-m-d H:i:s')
+                        : null,
+                    'ip'         => $doc['ip'] ?? null,
+                    'user_agent' => $doc['user_agent'] ?? null,
+                    'session_id' => $doc['session_id'] ?? null,
+                ];
+            }
+
+            return $logs;
+        } catch (\Throwable $e) {
+            error_log('MongoDB Read Error: ' . $e->getMessage());
+            return $this->getLogsFromJson();
+        }
+    }
+
+    /** Statistiques d'activité */
+    public function getActivityStats(): array
+    {
+        if (!$this->isConnected) {
+            return $this->getStatsFromJson();
         }
 
+        try {
+            $pipeline = [
+                ['$group' => ['_id' => '$action', 'count' => ['$sum' => 1]]],
+                ['$sort'  => ['count' => -1]],
+            ];
+
+            $cursor = $this->collection->aggregate($pipeline);
+            $stats  = [];
+
+            foreach ($cursor as $doc) {
+                $stats[(string)$doc['_id']] = (int)$doc['count'];
+            }
+
+            return $stats;
+        } catch (\Throwable $e) {
+            error_log('MongoDB Stats Error: ' . $e->getMessage());
+            return $this->getStatsFromJson();
+        }
+    }
+
+    /** Migration des logs JSON vers MongoDB */
+    public function migrateFromJson(): int|false
+    {
+        if (!$this->isConnected) return false;
+
+        $jsonFile = __DIR__ . '/../mongodb/user_logs.json';
+        if (!is_file($jsonFile)) return false;
+
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(60);
+
+        try {
+            $raw = file_get_contents($jsonFile);
+            $jsonData = json_decode($raw, true);
+            if (!is_array($jsonData)) return false;
+
+            $migrated = 0;
+
+            foreach ($jsonData as $log) {
+                $ts = isset($log['timestamp'])
+                    ? new UTCDateTime(strtotime((string)$log['timestamp']) * 1000)
+                    : new UTCDateTime();
+
+                $doc = [
+                    'user_id'    => isset($log['user_id']) ? (int)$log['user_id'] : 0,
+                    'action'     => (string)($log['action'] ?? 'unknown'),
+                    'details'    => $log['details'] ?? [],
+                    'timestamp'  => $ts,
+                    'ip'         => $log['ip'] ?? '127.0.0.1',
+                    'user_agent' => $log['user_agent'] ?? ($log['browser'] ?? 'Unknown'),
+                    'session_id' => $log['id'] ?? null,
+                    'migrated'   => true,
+                ];
+
+                $this->collection->insertOne($doc);
+                $migrated++;
+            }
+
+            @rename($jsonFile, $jsonFile . '.migrated_' . date('Y-m-d_H-i-s'));
+            return $migrated;
+        } catch (\Throwable $e) {
+            error_log('Migration Error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /** Test connexion */
+    public function testConnection(): array
+    {
+        if (!$this->isConnected) {
+            return ['success' => false, 'message' => 'Connexion MongoDB échouée'];
+        }
+
+        try {
+            $count = $this->collection->countDocuments();
+            return [
+                'success'         => true,
+                'message'         => 'Connexion MongoDB réussie',
+                'documents_count' => $count,
+                'database'        => self::DATABASE_NAME,
+                'collection'      => self::COLLECTION_NAME,
+            ];
+        } catch (\Throwable $e) {
+            return ['success' => false, 'message' => 'Erreur test MongoDB: ' . $e->getMessage()];
+        }
+    }
+
+    /* =======================
+       Fallback JSON (DEV only)
+       ======================= */
+
+    private function fallbackToJson(int $userId, string $action, array|string $details, ?string $userAgent, ?string $ip): string
+    {
+        $jsonDir  = __DIR__ . '/../mongodb';
+        $jsonFile = $jsonDir . '/user_logs.json';
+        if (!is_dir($jsonDir)) @mkdir($jsonDir, 0777, true);
+
+        $logs = is_file($jsonFile) ? json_decode((string)file_get_contents($jsonFile), true) : [];
+        if (!is_array($logs)) $logs = [];
+
+        $newLog = [
+            'id'         => uniqid('', true),
+            'user_id'    => $userId,
+            'action'     => $action,
+            'details'    => $details,
+            'timestamp'  => date('Y-m-d H:i:s'),
+            'ip'         => $ip ?: ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'),
+            'user_agent' => $userAgent ?: ($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'),
+        ];
+
+        $logs[] = $newLog;
+        file_put_contents($jsonFile, json_encode($logs, JSON_PRETTY_PRINT));
+
+        return $newLog['id'];
+    }
+
+    private function getLogsFromJson(): array
+    {
+        $jsonFile = __DIR__ . '/../mongodb/user_logs.json';
+        if (!is_file($jsonFile)) return [];
+        $data = json_decode((string)file_get_contents($jsonFile), true);
+        return is_array($data) ? $data : [];
+    }
+
+    private function getStatsFromJson(): array
+    {
+        $logs = $this->getLogsFromJson();
+        $stats = [];
+        foreach ($logs as $log) {
+            $a = $log['action'] ?? 'unknown';
+            $stats[$a] = ($stats[$a] ?? 0) + 1;
+        }
         return $stats;
     }
 }
 
-// Instance globale
+/* Instance globale + helpers */
 $mongoLogger = new MongoDBLogger();
 
-/**
- * Fonction helper pour logger facilement
- */
-function logActivity($user_id, $action, $details = [])
+function logUserActivity(int $userId, string $action, array|string $details = []): string|false
 {
     global $mongoLogger;
-    return $mongoLogger->logUserActivity($user_id, $action, $details);
+    return $mongoLogger->logActivity($userId, $action, $details);
+}
+
+function testMongoConnection(): array
+{
+    global $mongoLogger;
+    return $mongoLogger->testConnection();
 }
