@@ -7,3 +7,7 @@ test-database.php
 ca.pem
 /vendor/
 *.pem
+mongodb/user_logs.json
+mongodb/*.migrated_*
+phpinfo.php
+.vscode/
