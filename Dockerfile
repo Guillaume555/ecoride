@@ -32,8 +32,6 @@ RUN composer install --no-dev --prefer-dist --no-interaction --optimize-autoload
 RUN chown -R www-data:www-data /var/www/html
 
 # 11) Port web
-EXPOSE 80
-
 # --- Apache doit écouter sur le port fourni par Render ---
 ENV PORT=10000
 RUN sed -i "s/Listen 80/Listen ${PORT}/" /etc/apache2/ports.conf \
