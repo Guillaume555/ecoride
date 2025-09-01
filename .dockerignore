@@ -1,0 +1,7 @@
+.git
+.gitignore
+.env
+**/node_modules
+mongodb/user_logs.json
+mongodb/*.migrated_*
+phpinfo.php
