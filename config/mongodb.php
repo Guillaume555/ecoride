@@ -14,6 +14,14 @@ use MongoDB\BSON\UTCDateTime;
 use MongoDB\Collection;
 use Dotenv\Dotenv;
 
+// Alias rétro-compatible : l'ancien code peut continuer d'appeler logActivity()
+if (!function_exists('logActivity')) {
+    function logActivity($userId, $action, $details = [])
+    {
+        return logUserActivity((int) $userId, $action, $details);
+    }
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
