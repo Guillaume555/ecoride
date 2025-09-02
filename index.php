@@ -3,6 +3,11 @@
 
 session_start();
 
+// Afin de charger le fichier d'analyses partout.
+require_once __DIR__ . '/includes/session.php';
+$page = $_GET['page'] ?? 'home';
+trackView($page);
+
 // Vérifie si l'utilisateur a choisi l'option 'Se souvenir de moi' et tente une reconnexion automatique
 if (file_exists('includes/session.php')) {
     require_once 'includes/session.php';

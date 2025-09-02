@@ -23,7 +23,7 @@ $user = getCurrentUser();
 $success_message = '';
 $error_message = '';
 
-// VOTRE CODE ACTUEL (lignes 15-60 environ)
+//
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     $trip_id = $_POST['trip_id'] ?? null;
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     } elseif ($action === 'cancel_booking' && $booking_id) {
         try {
-            // Votre code existant...
+            // 
             if ($booking) {
                 // Annuler la réservation
                 $stmt = $pdo->prepare("UPDATE bookings SET status = 'cancelled' WHERE id = :booking_id");
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-// ✅ AJOUTER CE BLOC APRÈS LE TRAITEMENT POST (ligne 65 environ)
+// 
 // Gestion messages depuis URL
 if (isset($_GET['success'])) {
     switch ($_GET['success']) {
