@@ -12,8 +12,6 @@ require_once 'config/database.php';
 require_once __DIR__ . '/../includes/analytics.php';
 require_once __DIR__ . '/../config/database.php';
 
-$nombre_resultats = count($trips);
-
 // Configuration de la page
 $page_title = "EcoRide - Recherche de trajets";
 $extra_css = ['search.css']; // CSS spécifique à cette page
@@ -52,6 +50,8 @@ if (!empty($depart) && !empty($arrivee)) {
                 return $trip['fuel_type'] === $fuel_type;
             });
         }
+
+        $nombre_resultats = count($trips);
     } catch (Exception $e) {
         // En cas d'erreur, on stocke le message pour l'afficher
         $erreur_recherche = "Erreur lors de la recherche : " . $e->getMessage();
