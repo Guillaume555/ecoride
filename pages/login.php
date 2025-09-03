@@ -6,9 +6,8 @@ Description: Formulaire de connexion avec validation sécurisée
 
 // Inclusion des fonctions de session
 require_once __DIR__ . '/../includes/analytics.php';
-require_once 'config/database.php';
-require_once __DIR__ . '/includes/analytics.php';
-
+require_once __DIR__ . '/../includes/session.php';
+require_once __DIR__ . '/../config/database.php';
 
 // Configuration de la page
 $page_title = "EcoRide - Connexion";

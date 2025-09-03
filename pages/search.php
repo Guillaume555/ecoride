@@ -9,6 +9,10 @@ Description: Page de recherche et affichage des trajets de covoiturage
 
 // Inclusion de la configuration base de données
 require_once 'config/database.php';
+require_once __DIR__ . '/../includes/analytics.php';
+require_once __DIR__ . '/../config/database.php';
+
+$nombre_resultats = count($trips);
 
 // Configuration de la page
 $page_title = "EcoRide - Recherche de trajets";
@@ -25,20 +29,6 @@ $fuel_type = $_GET['fuel_type'] ?? ''; // Type de carburant (filtre)
 $trips = [];                // Tableau des trajets trouvés
 $recherche_effectuee = false; // Indique si une recherche a été lancée
 $nombre_resultats = 0;      // Nombre de résultats trouvés
-
-// ... ta requête SQL + $trips, $recherche_effectuee, $nombre_resultats ...
-
-trackSearch(
-    $depart ?? '',
-    $arrivee ?? '',
-    [
-        'date'       => $date ?: null,
-        'max_price'  => ($max_price !== '') ? (float)$max_price : null,
-        'fuel_type'  => $fuel_type ?: null,
-        'results'    => (int)$nombre_resultats
-    ]
-);
-
 
 // Si une recherche est effectuée (départ et arrivée obligatoires)
 if (!empty($depart) && !empty($arrivee)) {
@@ -62,12 +52,24 @@ if (!empty($depart) && !empty($arrivee)) {
                 return $trip['fuel_type'] === $fuel_type;
             });
         }
-
-        $nombre_resultats = count($trips);
     } catch (Exception $e) {
         // En cas d'erreur, on stocke le message pour l'afficher
         $erreur_recherche = "Erreur lors de la recherche : " . $e->getMessage();
     }
+}
+
+// ... ta requête SQL + $trips, $recherche_effectuee, $nombre_resultats ...
+if (!empty($depart) && !empty($arrivee)) {
+    trackSearch(
+        $depart,
+        $arrivee,
+        [
+            'date'       => $date ?: null,
+            'max_price'  => ($max_price !== '') ? (float)$max_price : null,
+            'fuel_type'  => $fuel_type ?: null,
+            'results'    => (int)$nombre_resultats
+        ]
+    );
 }
 ?>
 
@@ -417,37 +419,6 @@ if (!empty($depart) && !empty($arrivee)) {
         <?php endif; ?>
     </div>
 </section>
-
-<?php
-// donner analytique
-$recherche_effectuee = true;
-$nombre_resultats = count($trips);
-
-// 🔎 Log analytique
-trackSearch($depart, $arrivee, [
-    'date'       => $date ?: null,
-    'max_price'  => ($max_price !== '') ? (float)$max_price : null,
-    'fuel_type'  => $fuel_type ?: null,
-    'results'    => $nombre_resultats
-]);
-
-trackReservation(
-    (int)$trip_id,
-    (int)$seats_booked,
-    (float)$total_price,
-    [
-        'payment_status' => $payment_status ?? 'pending'
-    ]
-);
-
-track('cancel_reservation', [
-    'booking_id' => (int)$booking_id,
-    'trip_id'    => (int)$trip_id
-]);
-
-
-
-?>
 
 <?php
 /*
