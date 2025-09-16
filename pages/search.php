@@ -9,8 +9,6 @@ Description: Page de recherche et affichage des trajets de covoiturage
 
 // Inclusion de la configuration base de données
 require_once 'config/database.php';
-require_once __DIR__ . '/../includes/analytics.php';
-require_once __DIR__ . '/../config/database.php';
 
 // Configuration de la page
 $page_title = "EcoRide - Recherche de trajets";
@@ -56,20 +54,6 @@ if (!empty($depart) && !empty($arrivee)) {
         // En cas d'erreur, on stocke le message pour l'afficher
         $erreur_recherche = "Erreur lors de la recherche : " . $e->getMessage();
     }
-}
-
-// ... ta requête SQL + $trips, $recherche_effectuee, $nombre_resultats ...
-if (!empty($depart) && !empty($arrivee)) {
-    trackSearch(
-        $depart,
-        $arrivee,
-        [
-            'date'       => $date ?: null,
-            'max_price'  => ($max_price !== '') ? (float)$max_price : null,
-            'fuel_type'  => $fuel_type ?: null,
-            'results'    => (int)$nombre_resultats
-        ]
-    );
 }
 ?>
 

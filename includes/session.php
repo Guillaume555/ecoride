@@ -6,14 +6,14 @@ Description: Fonctions centralisées pour la gestion des sessions utilisateur
 ================================================
 */
 
-// Inclusion de la configuration base de données
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/mongodb.php';
-
 // Démarrage de la session si pas déjà fait
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Inclusion de la configuration base de données
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/mongodb.php';
 
 /**
  * Vérifie si un utilisateur est connecté
@@ -26,13 +26,20 @@ function isLoggedIn()
 
 function logUserConnection($user_id, $action)
 {
-    // Redirige vers le logger MongoDB (rétro-compat)
-    logUserActivity((int)$user_id, $action, [
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
-    ]);
-}
+    // Simulation MongoDB - logs en fichier JSON
+    $log = [
+        'user_id' => $user_id,
+        'action' => $action, // 'login', 'logout', 'register'
+        'timestamp' => date('Y-m-d H:i:s'),
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? 'localhost'
+    ];
 
+    file_put_contents(
+        'logs/user_activity.json',
+        json_encode($log) . "\n",
+        FILE_APPEND
+    );
+}
 
 /**
  * Connecte un utilisateur (création de session)
@@ -57,7 +64,7 @@ function loginUser($user_data)
     $_SESSION['login_time'] = time();
 
     //  LOG MONGODB - CONNEXION
-    logUserActivity($user_data['id'], 'login', [
+    logActivity($user_data['id'], 'login', [
         'username' => $user_data['username'],
         'role' => $user_data['role']
     ]);
@@ -72,7 +79,7 @@ function logoutUser()
 {
     //  LOG MONGODB - DÉCONNEXION
     if (isLoggedIn()) {
-        logUserActivity($_SESSION['user_id'], 'logout');
+        logActivity($_SESSION['user_id'], 'logout');
     }
 
     // Destruction de toutes les variables de session

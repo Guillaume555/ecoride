@@ -3,27 +3,21 @@
 
 session_start();
 
-// 1) Charger les dépendances (ordre important)
-require_once __DIR__ . '/includes/session.php';     // isLoggedIn(), loginUser(), logoutUser(), ...
-require_once __DIR__ . '/includes/analytics.php';   // track(), trackView(), trackSearch(), ...
-
-// 2) Reconnexion auto si cookie "remember me"
 // Vérifie si l'utilisateur a choisi l'option 'Se souvenir de moi' et tente une reconnexion automatique
 if (file_exists('includes/session.php')) {
     require_once 'includes/session.php';
     checkRememberMeLogin();
 }
 
-// 3) Sécuriser la page demandée
 // On récupère le nom de la page à afficher via l'URL, ou on redirige vers l'accueil si non valide
 $page = $_GET['page'] ?? 'home';
 $allowed_pages = ['home', 'search', 'login', 'detail', 'register', 'logout', 'profile', 'my-trips', 'about', 'contact', 'logs'];
+
 // On filtre les pages autorisées pour éviter toute tentative d'injection ou d'accès interdit
 if (!in_array($page, $allowed_pages)) {
     $page = 'home';
 }
 
-// 4) Si logout: déconnecter puis rediriger
 // Cas particulier : si la page demandée est 'logout', on déconnecte l'utilisateur
 if ($page === 'logout') {
     require_once 'includes/session.php';
@@ -31,9 +25,6 @@ if ($page === 'logout') {
     header('Location: ?page=home');
     exit;
 }
-
-// 5) Log analytique de la consultation (facultatif mais pratique)
-trackView($page);
 
 // Étape 1 : On inclut la page dans un tampon pour en récupérer les variables comme le titre ou les styles CSS
 ob_start(); // On démarre la capture du contenu de la page

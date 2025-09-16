@@ -5,9 +5,8 @@ Description: Formulaire de connexion avec validation sécurisée
 ================================================ */
 
 // Inclusion des fonctions de session
-require_once __DIR__ . '/../includes/analytics.php';
-require_once __DIR__ . '/../includes/session.php';
-require_once __DIR__ . '/../config/database.php';
+require_once 'includes/session.php';
+require_once 'config/database.php';
 
 // Configuration de la page
 $page_title = "EcoRide - Connexion";
@@ -76,16 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Connexion réussie !
                     loginUser($user);
 
-                    // 🔎 Log analytique (pas de trackLogin : on utilise track)
-                    track('login', [
-                        'remember_me' => (bool)$remember_me
-                    ]);
-
-                    trackError('login', 'invalid_credentials', ['email' => $email ?? null]);
-
-
-                    // Gestion "Se souvenir de moi"
+                    // Gestion "Se souvenir de moi" (bonus)
                     if ($remember_me) {
+                        // Cookie sécurisé pour 30 jours
                         setcookie(
                             'remember_token',
                             base64_encode($user['id'] . ':' . $user['email']),
@@ -96,8 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             true
                         );
                     }
-
-
 
                     // Redirection intelligente
                     $redirect_url = getRedirectAfterLogin();

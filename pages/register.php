@@ -128,15 +128,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
 
             // Après l'insertion en BDD réussie (ligne ~90)
-            // Après l'insertion en BDD réussie (ligne ~90)
             if ($result) {
                 // ✅ LOG MONGODB - INSCRIPTION
-                $new_user_id = (int) $pdo->lastInsertId();
-                logUserActivity($new_user_id, 'register', [
-                    'username'   => $username ?? null,
-                    'email'      => $email ?? null,
-                    'ip'         => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
+                $new_user_id = $pdo->lastInsertId();
+                logActivity($new_user_id, 'register', [
+                    'username' => $username,
+                    'email' => $email
                 ]);
 
                 // Succès de l'inscription
@@ -144,10 +141,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Redirection différée vers login
                 echo '<script>
-                        setTimeout(function() {
-                            window.location.href = "?page=login&registered=1";
-                        }, 3000);
-                      </script>';
+                    setTimeout(function() {
+                        window.location.href = "?page=login&registered=1";
+                    }, 3000);
+                </script>';
             } else {
                 $errors['general'] = "Erreur lors de la création du compte. Veuillez réessayer.";
             }

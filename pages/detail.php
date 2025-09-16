@@ -7,8 +7,7 @@ Description: Affichage détaillé d'un trajet avec toutes les infos
 */
 
 // Inclusion de la configuration base de données
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/analytics.php';
+require_once 'config/database.php';
 
 // Configuration de la page
 $page_title = "EcoRide - Détail du trajet";
@@ -30,29 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reserve'])) {
 
         // Vérification crédits suffisants
         if ($user['credits'] >= $total_price) {
-            // ✅ Réservation simulée (à relier à la BDD plus tard)
             $reservation_success = "Réservation simulée réussie ! (À implémenter)";
-
-            // 📝 Log analytique : réservation
-            trackReservation(
-                (int)$trip_id,
-                (int)$seats,
-                (float)$total_price,
-                [
-                    'driver_id'       => (int)$trip['driver_id'],
-                    'price_per_seat'  => (float)$trip['price_per_seat'],
-                    'available_seats' => (int)$trip['available_seats'],
-                    'payment_status'  => 'simulated'
-                ]
-            );
         } else {
             $reservation_error = "Crédits insuffisants. Vous avez {$user['credits']} crédits, il en faut {$total_price}.";
-            // ❌ Log analytique : erreur
-            trackError('reservation', 'credits_insufficient', [
-                'trip_id' => (int)$trip_id,
-                'total_price' => (float)$total_price,
-                'user_credits' => (float)$user['credits']
-            ]);
         }
     } else {
         header('Location: ?page=login');
@@ -68,9 +47,6 @@ if (!$trip_id) {
     header('Location: ?page=search');
     exit;
 }
-
-// Log vue de page détail
-trackView('detail', ['trip_id' => (int)$trip_id]);
 
 try {
     // Récupération des détails complets du trajet
