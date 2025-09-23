@@ -2,7 +2,7 @@
 /*
 ================================================
 FICHIER: pages/contact.php - Contact EcoRide
-Description: Page de contact avec formulaire
+Description: Page de contact avec formulaire et envoi email PHPMailer
 ================================================
 */
 
@@ -11,6 +11,9 @@ $page_title = "EcoRide - Contact";
 $extra_css = ['contact.css']; // Utilise style.css + home.css par défaut
 $extra_js = ['form-validation.js']; //Js spécifique a la page
 
+// Inclure le service email
+require_once 'config/EmailService.php';
+require_once 'config/mongodb.php';
 
 // Variables pour le formulaire
 $success_message = '';
@@ -28,12 +31,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_message = "Tous les champs sont obligatoires.";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error_message = "Format d'email invalide.";
+    } elseif (strlen($message) < 10) {
+        $error_message = "Le message doit contenir au moins 10 caractères.";
     } else {
-        // Simulation envoi email (en production : mail() ou service email)
-        $success_message = "Votre message a été envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.";
+        // Envoi email avec PHPMailer
+        try {
+            $emailService = new EmailService();
 
-        // Reset des champs après succès
-        $name = $email = $subject = $message = '';
+            // Conversion du sujet sélectionné
+            $subjectText = match ($subject) {
+                'question' => 'Question générale',
+                'support' => 'Support technique',
+                'suggestion' => 'Suggestion d\'amélioration',
+                'partenariat' => 'Partenariat',
+                'autre' => 'Autre demande',
+                default => $subject
+            };
+
+            // Envoi email principal
+            $result = $emailService->sendContactEmail($name, $email, $subjectText, $message);
+
+            if ($result['success']) {
+                // Envoie email de confirmation à l'utilisateur
+                $emailService->sendContactConfirmation($email, $name);
+
+                // Log MongoDB
+                if (function_exists('logUserActivity')) {
+                    $userId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+                    logUserActivity($userId, 'contact_form', [
+                        'name' => $name,
+                        'email' => $email,
+                        'subject' => $subjectText,
+                        'has_account' => isset($_SESSION['user_id'])
+                    ]);
+                }
+
+                $success_message = "Votre message a été envoyé avec succès ! Nous vous répondrons dans les plus brefs délais. Un email de confirmation vous a été envoyé.";
+
+                // Reset des champs après succès
+                $name = $email = $subject = $message = '';
+            } else {
+                $error_message = $result['message'];
+            }
+        } catch (Exception $e) {
+            error_log("Erreur contact form: " . $e->getMessage());
+            $error_message = "Erreur lors de l'envoi du message. Veuillez réessayer plus tard.";
+        }
     }
 }
 ?>
@@ -81,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
 
                     <!-- Formulaire -->
-                    <form method="POST" class="contact-form">
+                    <form method="POST" class="contact-form" id="contactForm">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -145,13 +188,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 id="message"
                                 name="message"
                                 rows="6"
-                                placeholder="Décrivez votre demande en détail..."
+                                placeholder="Décrivez votre demande en détail... (minimum 10 caractères)"
                                 required><?= htmlspecialchars($message ?? '') ?></textarea>
+                            <div class="form-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i>
+                                    Soyez précis dans votre demande pour une réponse adaptée
+                                </small>
+                            </div>
                         </div>
 
-                        <button type="submit" class="btn btn-contact-primary">
+                        <!-- Note RGPD -->
+                        <div class="mb-4">
+                            <div class="alert alert-light border">
+                                <small class="text-muted">
+                                    <i class="fas fa-shield-alt text-primary"></i>
+                                    <strong>Protection des données :</strong> Vos informations sont utilisées uniquement pour traiter votre demande et ne sont pas transmises à des tiers.
+                                </small>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-contact-primary" id="submitBtn">
                             <i class="fas fa-paper-plane"></i>
-                            Envoyer le message
+                            <span class="btn-text">Envoyer le message</span>
+                            <span class="btn-loading d-none">
+                                <i class="fas fa-spinner fa-spin"></i> Envoi en cours...
+                            </span>
                         </button>
                     </form>
                 </div>
@@ -171,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div class="contact-details">
                             <h6>Email</h6>
-                            <p><a href="mailto:contact@ecoride.fr">contact@ecoride.fr</a></p>
+                            <p><a href="mailto:siteweb5555@gmail.com">siteweb5555@gmail.com</a></p>
                         </div>
                     </div>
 
@@ -196,26 +258,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <!-- FAQ RAPIDE -->
+                <!-- FAQ RAPIDE AVEC ACCORDÉON -->
                 <div class="contact-faq-card">
                     <h5 class="faq-title">
                         <i class="fas fa-question-circle text-warning"></i>
                         Questions fréquentes
                     </h5>
 
-                    <div class="faq-item">
-                        <strong>Comment créer un compte ?</strong>
-                        <p>Cliquez sur "Inscription" et suivez les étapes. Vous recevrez 20 crédits gratuits !</p>
-                    </div>
+                    <div class="accordion accordion-flush" id="contactFaqAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faq1"
+                                    aria-expanded="false" aria-controls="faq1">
+                                    <!-- <i class="fas fa-user-plus me-2"></i> -->
+                                    Comment créer un compte ?
+                                </button>
+                            </h2>
+                            <div id="faq1" class="accordion-collapse collapse"
+                                data-bs-parent="#contactFaqAccordion">
+                                <div class="accordion-body">
+                                    Cliquez sur "Inscription" en haut de page et suivez les étapes.
+                                    Vous recevrez automatiquement 20 crédits gratuits pour commencer !
+                                </div>
+                            </div>
+                        </div>
 
-                    <div class="faq-item">
-                        <strong>Comment réserver un trajet ?</strong>
-                        <p>Recherchez votre trajet, cliquez sur "Voir détail" puis "Réserver".</p>
-                    </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faq2"
+                                    aria-expanded="false" aria-controls="faq2">
+                                    <!-- <i class="fas fa-search me-2"></i> -->
+                                    Comment réserver un trajet ?
+                                </button>
+                            </h2>
+                            <div id="faq2" class="accordion-collapse collapse"
+                                data-bs-parent="#contactFaqAccordion">
+                                <div class="accordion-body">
+                                    Utilisez la barre de recherche pour trouver votre trajet,
+                                    cliquez sur "Voir détail" puis "Réserver".
+                                    Vos crédits seront automatiquement déduits.
+                                </div>
+                            </div>
+                        </div>
 
-                    <div class="faq-item">
-                        <strong>Que faire en cas de problème ?</strong>
-                        <p>Contactez-nous immédiatement via ce formulaire ou par email.</p>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faq3"
+                                    aria-expanded="false" aria-controls="faq3">
+                                    <!-- <i class="fas fa-plus-circle me-2"></i> -->
+                                    Comment proposer un trajet ?
+                                </button>
+                            </h2>
+                            <div id="faq3" class="accordion-collapse collapse"
+                                data-bs-parent="#contactFaqAccordion">
+                                <div class="accordion-body">
+                                    Connectez-vous, ajoutez un véhicule depuis votre profil si nécessaire,
+                                    puis cliquez sur "Proposer un trajet" dans le menu utilisateur.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faq4"
+                                    aria-expanded="false" aria-controls="faq4">
+                                    <!-- <i class="fas fa-times-circle me-2"></i> -->
+                                    Comment annuler une réservation ?
+                                </button>
+                            </h2>
+                            <div id="faq4" class="accordion-collapse collapse"
+                                data-bs-parent="#contactFaqAccordion">
+                                <div class="accordion-body">
+                                    Allez dans "Mes trajets" depuis votre profil.
+                                    Vous pouvez annuler jusqu'à 2h avant le départ.
+                                    Vos crédits seront automatiquement remboursés.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#faq5"
+                                    aria-expanded="false" aria-controls="faq5">
+                                    <!-- <i class="fas fa-exclamation-triangle me-2"></i> -->
+                                    Que faire en cas de problème ?
+                                </button>
+                            </h2>
+                            <div id="faq5" class="accordion-collapse collapse"
+                                data-bs-parent="#contactFaqAccordion">
+                                <div class="accordion-body">
+                                    Contactez-nous immédiatement via ce formulaire en précisant
+                                    le type de problème. Nous répondons sous 24h et priorité
+                                    aux urgences de sécurité.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
