@@ -13,6 +13,7 @@ require_once 'config/database.php';
 // Configuration de la page
 $page_title = "EcoRide - Recherche de trajets";
 $extra_css = ['search.css']; // CSS spécifique à cette page
+$extra_js = ['search-trip.js']; //Js spécifique a la page
 
 // Récupération des paramètres de recherche depuis l'URL
 $depart = $_GET['depart'] ?? '';     // Ville de départ
@@ -347,25 +348,40 @@ if (!empty($depart) && !empty($arrivee)) {
                                 </div>
                             <?php endforeach; ?>
                         </div>
-
                     <?php else: ?>
-                        <!-- AUCUN RÉSULTAT TROUVÉ -->
+
+                        <!-- AUCUN RÉSULTAT TROUVÉ - VERSION AMÉLIORÉE -->
                         <div class="no-results">
                             <div class="text-center py-5">
-                                <i class="fas fa-search fa-3x text-muted mb-3"></i>
-                                <h3 class="text-muted">Aucun trajet trouvé</h3>
-                                <p class="text-muted">
-                                    Essayez de modifier vos critères de recherche.
+                                <i class="fas fa-search fa-4x text-muted mb-4"></i>
+                                <h4 class="text-muted mb-3">Aucun trajet trouvé</h4>
+                                <p class="text-muted mb-4">
+                                    Nous n'avons pas trouvé de trajet correspondant à vos critères.
+                                    <br>Essayez de modifier vos filtres ou proposez votre propre trajet !
                                 </p>
 
-                                <!-- Suggestions pour améliorer la recherche -->
-                                <div class="mt-4">
-                                    <h5>Suggestions :</h5>
-                                    <ul class="list-unstyled">
-                                        <li>• Vérifiez l'orthographe des villes</li>
-                                        <li>• Essayez sans date spécifique</li>
-                                        <li>• Recherchez des villes proches</li>
-                                    </ul>
+                                <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+                                    <button type="button" class="btn btn-outline-primary" onclick="clearFilters()">
+                                        <i class="fas fa-eraser"></i> Réinitialiser les filtres
+                                    </button>
+
+                                    <?php if (isLoggedIn()): ?>
+                                        <a href="?page=create-trip" class="btn btn-success">
+                                            <i class="fas fa-plus"></i> Proposer ce trajet
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="?page=login" class="btn btn-success">
+                                            <i class="fas fa-sign-in-alt"></i> Se connecter pour proposer
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+
+                                <hr class="my-4">
+                                <h6 class="text-muted">Suggestions populaires :</h6>
+                                <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                    <a href="?page=search&departure=Paris&arrival=Lyon" class="badge bg-light text-dark text-decoration-none">Paris → Lyon</a>
+                                    <a href="?page=search&departure=Marseille&arrival=Nice" class="badge bg-light text-dark text-decoration-none">Marseille → Nice</a>
+                                    <a href="?page=search&departure=Bordeaux&arrival=Toulouse" class="badge bg-light text-dark text-decoration-none">Bordeaux → Toulouse</a>
                                 </div>
                             </div>
                         </div>

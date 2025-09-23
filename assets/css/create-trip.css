@@ -1,0 +1,39 @@
+/* Styles spécifiques pour create-trip */
+.auth-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.form-label i {
+    margin-right: 0.5rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #4B6B52;
+    box-shadow: 0 0 0 0.2rem rgba(75, 107, 82, 0.25);
+}
+
+.btn-success {
+    background-color: #4B6B52;
+    border-color: #4B6B52;
+}
+
+.btn-success:hover {
+    background-color: #3d5943;
+    border-color: #3d5943;
+}
+
+@media (max-width: 768px) {
+    .auth-card {
+        padding: 1.5rem;
+    }
+}
