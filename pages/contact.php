@@ -20,6 +20,7 @@ $success_message = '';
 $error_message = '';
 
 // Traitement du formulaire de contact
+// Traitement du formulaire de contact
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -36,6 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // Envoi email avec PHPMailer
         try {
+            // AJOUTER CES LIGNES AU DÉBUT
+            if (!is_dir('logs')) {
+                mkdir('logs', 0755, true);
+            }
             $emailService = new EmailService();
 
             // Conversion du sujet sélectionné
@@ -77,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log("Erreur contact form: " . $e->getMessage());
             $error_message = "Erreur lors de l'envoi du message. Veuillez réessayer plus tard.";
         }
-    }
+    } // <- CETTE ACCOLADE ÉTAIT MANQUANTE !
 }
 ?>
 

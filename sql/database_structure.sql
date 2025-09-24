@@ -1,107 +1,174 @@
--- Structure de la base de données EcoRide
--- Ce fichier crée les tables principales du projet (sans données).
+-- =========================================================
+-- Structure de la base de données EcoRide - Version complète
+-- Comprend toutes les tables + nouveau système de récupération mot de passe
+-- =========================================================
 
 -- Créer la base de données
 CREATE DATABASE IF NOT EXISTS ecoride;
 
 USE ecoride;
 
+-- =========================================================
 -- TABLE 1: USERS (Utilisateurs)
+-- Stocke les informations des utilisateurs (passagers, conducteurs, admins)
+-- =========================================================
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
-    credits INT DEFAULT 20,
-    role ENUM(
-        'passenger',
-        'driver',
-        'admin'
+    username VARCHAR(50) NOT NULL UNIQUE,           -- Nom d'utilisateur unique
+    email VARCHAR(100) NOT NULL UNIQUE,             -- Email unique pour connexion
+    password VARCHAR(255) NOT NULL,                 -- Mot de passe haché (BCRYPT)
+    phone VARCHAR(20),                               -- Téléphone optionnel
+    credits INT DEFAULT 20,                          -- Crédits pour réservations (20 à l'inscription)
+    role ENUM(                                       -- Rôle utilisateur
+        'passenger',                                 -- Passager (défaut)
+        'driver',                                    -- Conducteur
+        'admin'                                      -- Administrateur
     ) DEFAULT 'passenger',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date création compte
+    is_active BOOLEAN DEFAULT TRUE                   -- Compte actif/suspendu
 );
 
+-- =========================================================
 -- TABLE 2: VEHICLES (Véhicules)
+-- Véhicules enregistrés par les conducteurs
+-- =========================================================
 CREATE TABLE vehicles (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    brand VARCHAR(50) NOT NULL,
-    model VARCHAR(50) NOT NULL,
-    color VARCHAR(30),
-    license_plate VARCHAR(20) UNIQUE,
-    seats INT NOT NULL,
-    fuel_type ENUM(
+    user_id INT NOT NULL,                            -- Propriétaire du véhicule
+    brand VARCHAR(50) NOT NULL,                      -- Marque (Peugeot, Tesla, etc.)
+    model VARCHAR(50) NOT NULL,                      -- Modèle (308, Model 3, etc.)
+    color VARCHAR(30),                               -- Couleur du véhicule
+    license_plate VARCHAR(20) UNIQUE,                -- Plaque d'immatriculation unique
+    seats INT NOT NULL,                              -- Nombre de places total
+    fuel_type ENUM(                                  -- Type de carburant/énergie
         'essence',
         'diesel',
         'électrique',
         'hybride'
     ) DEFAULT 'essence',
-    year YEAR,
+    year YEAR,                                       -- Année du véhicule
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
+-- =========================================================
 -- TABLE 3: TRIPS (Trajets)
+-- Trajets proposés par les conducteurs
+-- =========================================================
 CREATE TABLE trips (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    driver_id INT NOT NULL,
-    vehicle_id INT NOT NULL,
-    departure_city VARCHAR(100) NOT NULL,
-    arrival_city VARCHAR(100) NOT NULL,
-    departure_time DATETIME NOT NULL,
-    available_seats INT NOT NULL,
-    price_per_seat DECIMAL(5, 2) NOT NULL,
-    preferences TEXT,
-    status ENUM(
-        'active',
-        'completed',
-        'cancelled'
+    driver_id INT NOT NULL,                          -- Conducteur du trajet
+    vehicle_id INT NOT NULL,                         -- Véhicule utilisé
+    departure_city VARCHAR(100) NOT NULL,            -- Ville de départ
+    arrival_city VARCHAR(100) NOT NULL,              -- Ville d'arrivée
+    departure_time DATETIME NOT NULL,                -- Date et heure de départ
+    available_seats INT NOT NULL,                    -- Places disponibles pour passagers
+    price_per_seat DECIMAL(5, 2) NOT NULL,          -- Prix par place en euros
+    preferences TEXT,                                -- Préférences du conducteur
+    status ENUM(                                     -- Statut du trajet
+        'active',                                    -- Actif (réservable)
+        'completed',                                 -- Terminé
+        'cancelled'                                  -- Annulé
     ) DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (driver_id) REFERENCES users (id) ON DELETE CASCADE,
     FOREIGN KEY (vehicle_id) REFERENCES vehicles (id) ON DELETE CASCADE
 );
 
+-- =========================================================
 -- TABLE 4: BOOKINGS (Réservations)
+-- Réservations effectuées par les passagers
+-- =========================================================
 CREATE TABLE bookings (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    trip_id INT NOT NULL,
-    passenger_id INT NOT NULL,
-    seats_booked INT DEFAULT 1,
-    total_price DECIMAL(6, 2) NOT NULL,
-    status ENUM(
-        'pending',
-        'confirmed',
-        'cancelled'
+    trip_id INT NOT NULL,                            -- Trajet réservé
+    passenger_id INT NOT NULL,                       -- Passager qui réserve
+    seats_booked INT DEFAULT 1,                      -- Nombre de places réservées
+    total_price DECIMAL(6, 2) NOT NULL,             -- Prix total payé
+    status ENUM(                                     -- Statut réservation
+        'pending',                                   -- En attente
+        'confirmed',                                 -- Confirmée
+        'cancelled'                                  -- Annulée
     ) DEFAULT 'pending',
-    booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    payment_status ENUM('pending', 'paid', 'refunded') DEFAULT 'pending',
+    booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Date de réservation
+    payment_status ENUM('pending', 'paid', 'refunded') DEFAULT 'pending', -- Statut paiement
     FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE,
     FOREIGN KEY (passenger_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
+-- =========================================================
 -- TABLE 5: REVIEWS (Avis)
+-- Avis laissés entre utilisateurs après trajets
+-- =========================================================
 CREATE TABLE reviews (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    trip_id INT NOT NULL,
-    reviewer_id INT NOT NULL,
-    reviewed_id INT NOT NULL,
-    rating INT CHECK (rating BETWEEN 1 AND 5),
-    comment TEXT,
+    trip_id INT NOT NULL,                            -- Trajet concerné
+    reviewer_id INT NOT NULL,                        -- Utilisateur qui note
+    reviewed_id INT NOT NULL,                        -- Utilisateur noté
+    rating INT CHECK (rating BETWEEN 1 AND 5),      -- Note de 1 à 5 étoiles
+    comment TEXT,                                    -- Commentaire optionnel
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_validated BOOLEAN DEFAULT FALSE,
+    is_validated BOOLEAN DEFAULT FALSE,              -- Avis modéré/validé
     FOREIGN KEY (trip_id) REFERENCES trips (id) ON DELETE CASCADE,
     FOREIGN KEY (reviewer_id) REFERENCES users (id) ON DELETE CASCADE,
     FOREIGN KEY (reviewed_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
+-- =========================================================
+-- TABLE 6: PASSWORD_RESETS (Réinitialisation mots de passe)
+-- NOUVELLE TABLE - Gestion sécurisée récupération mots de passe
+-- =========================================================
+CREATE TABLE password_resets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,                     -- Email utilisateur (doit exister dans users)
+    token VARCHAR(100) NOT NULL UNIQUE,              -- Token unique sécurisé (SHA-256)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Date création du token
+    expires_at TIMESTAMP NOT NULL,                   -- Date expiration (créé + 1h)
+    used_at TIMESTAMP NULL,                          -- Date utilisation (NULL = pas encore utilisé)
+    is_used BOOLEAN DEFAULT FALSE,                   -- Token utilisé ou non
+    ip_address VARCHAR(45),                          -- IP de la demande (IPv4/IPv6)
+    user_agent TEXT                                  -- Navigateur de la demande
+);
+
+-- =========================================================
 -- INDEX POUR PERFORMANCES
+-- Optimisation des requêtes fréquentes
+-- =========================================================
+
+-- Index pour recherche de trajets par villes
 CREATE INDEX idx_trips_cities ON trips (departure_city, arrival_city);
 
+-- Index pour recherche par date de départ
 CREATE INDEX idx_trips_date ON trips (departure_time);
 
+-- Index pour réservations d'un trajet
 CREATE INDEX idx_bookings_trip ON bookings (trip_id);
 
+-- Index pour avis d'un utilisateur
 CREATE INDEX idx_reviews_user ON reviews (reviewed_id);
+
+-- Index pour système récupération mot de passe (NOUVEAUX)
+CREATE INDEX idx_password_reset_token ON password_resets (token);
+CREATE INDEX idx_password_reset_email ON password_resets (email);
+CREATE INDEX idx_password_reset_expires ON password_resets (expires_at);
+
+-- =========================================================
+-- COMMENTAIRES TECHNIQUES
+-- =========================================================
+
+/*
+SÉCURITÉ PASSWORD_RESETS :
+- Token : Hash SHA-256 de 64 caractères (généré côté PHP)
+- Expires_at : Automatiquement défini à NOW() + 1 HOUR
+- Usage unique : is_used passe à TRUE après utilisation
+- Nettoyage : Tokens expirés supprimés automatiquement (cron job)
+
+RELATIONS IMPORTANTES :
+- users.email ← password_resets.email (pas de FK pour éviter cascade delete)
+- Tous les autres FK avec ON DELETE CASCADE pour intégrité
+
+PERFORMANCES :
+- Index sur colonnes de recherche fréquente
+- Index composites pour requêtes multi-colonnes
+- Pas d'index sur created_at (déjà indexé par défaut sur PK)
+*/

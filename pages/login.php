@@ -206,10 +206,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 Se connecter
                             </button>
 
-                            <!-- LIENS UTILES -->
+                            <!-- MOTS DE PASSE OUBLIER -->
                             <div class="text-center">
                                 <small class="text-muted">
-                                    <a href="#" class="auth-link">Mot de passe oublié ?</a>
+                                    <a href="?page=forgot-password" class="auth-link">
+                                        <i class="fas fa-key"></i> Mot de passe oublié ?
+                                    </a>
                                 </small>
                             </div>
 
