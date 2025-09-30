@@ -11,7 +11,28 @@ if (file_exists('includes/session.php')) {
 
 // On récupère le nom de la page à afficher via l'URL, ou on redirige vers l'accueil si non valide
 $page = $_GET['page'] ?? 'home';
-$allowed_pages = ['home', 'search', 'login', 'detail', 'register', 'logout', 'profile', 'my-trips', 'about', 'contact', 'logs', 'create-trip', 'add-vehicle', 'reset-password', 'forgot-password'];
+$allowed_pages = [
+    'home',
+    'search',
+    'login',
+    'detail',
+    'register',
+    'logout',
+    'profile',
+    'my-trips',
+    'about',
+    'contact',
+    'logs',
+    'create-trip',
+    'add-vehicle',
+    'reset-password',
+    'forgot-password',
+    // Pages admin
+    'admin-dashboard',
+    'admin-users',
+    'admin-trips',
+    'admin-reviews'
+];
 
 // On filtre les pages autorisées pour éviter toute tentative d'injection ou d'accès interdit
 if (!in_array($page, $allowed_pages)) {
