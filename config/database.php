@@ -3,6 +3,11 @@
 // Fichier de configuration pour la base de données
 // Contient la connexion PDO et des fonctions utiles pour le projet
 
+require_once __DIR__ . '/../classes/User.php';
+require_once __DIR__ . '/../classes/Trip.php';
+require_once __DIR__ . '/../classes/Vehicle.php';
+require_once __DIR__ . '/../classes/Admin.php';
+
 // Configuration pour production (Aiven) et local (Laragon)
 if (getenv('DB_HOST')) {
     // Production (Render + Aiven)
