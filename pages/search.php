@@ -1,50 +1,50 @@
 <?php
 /*
 ================================================
-FICHIER: pages/search.php - Page de recherche EcoRide
-Développé par: [Votre nom]
+FICHIER: pages/search.php - Page de recherche EcoRide (VERSION POO)
 Description: Page de recherche et affichage des trajets de covoiturage
 ================================================
 */
 
-// Inclusion de la configuration base de données
+// Inclusion des fonctions de session et classes POO
+require_once 'includes/session.php';
 require_once 'config/database.php';
+require_once 'classes/Trip.php';
 
 // Configuration de la page
 $page_title = "EcoRide - Recherche de trajets";
-$extra_css = ['search.css']; // CSS spécifique à cette page
-$extra_js = ['search-trip.js']; //Js spécifique a la page
+$extra_css = ['search.css'];
+$extra_js = ['search-trip.js'];
 
 // Récupération des paramètres de recherche depuis l'URL
-$depart = $_GET['depart'] ?? '';     // Ville de départ
-$arrivee = $_GET['arrivee'] ?? '';   // Ville d'arrivée
-$date = $_GET['date'] ?? '';         // Date de départ (optionnelle)
-$max_price = $_GET['max_price'] ?? ''; // Prix maximum (filtre)
-$fuel_type = $_GET['fuel_type'] ?? ''; // Type de carburant (filtre)
+$depart = $_GET['depart'] ?? '';
+$arrivee = $_GET['arrivee'] ?? '';
+$date = $_GET['date'] ?? '';
+$max_price = $_GET['max_price'] ?? '';
+$fuel_type = $_GET['fuel_type'] ?? '';
 
 // Variables pour les résultats
-$trips = [];                // Tableau des trajets trouvés
-$recherche_effectuee = false; // Indique si une recherche a été lancée
-$nombre_resultats = 0;      // Nombre de résultats trouvés
+$trips = [];
+$recherche_effectuee = false;
+$nombre_resultats = 0;
+$erreur_recherche = '';
 
-// Si une recherche est effectuée (départ et arrivée obligatoires)
+// Recherche POO si critères obligatoires fournis
 if (!empty($depart) && !empty($arrivee)) {
     $recherche_effectuee = true;
 
     try {
-        // Appel de la fonction de recherche (définie dans database.php)
-        $trips = searchTrips($depart, $arrivee, $date);
+        // Recherche de base avec Trip::search()
+        $trips = Trip::search($pdo, $depart, $arrivee, $date);
 
-        // Application des filtres additionnels
+        // Application des filtres via PHP (pour l'instant, peut être optimisé en SQL plus tard)
         if (!empty($max_price)) {
-            // Filtre sur le prix maximum
             $trips = array_filter($trips, function ($trip) use ($max_price) {
                 return floatval($trip['price_per_seat']) <= floatval($max_price);
             });
         }
 
         if (!empty($fuel_type)) {
-            // Filtre sur le type de carburant
             $trips = array_filter($trips, function ($trip) use ($fuel_type) {
                 return $trip['fuel_type'] === $fuel_type;
             });
@@ -52,8 +52,9 @@ if (!empty($depart) && !empty($arrivee)) {
 
         $nombre_resultats = count($trips);
     } catch (Exception $e) {
-        // En cas d'erreur, on stocke le message pour l'afficher
         $erreur_recherche = "Erreur lors de la recherche : " . $e->getMessage();
+        $trips = [];
+        $nombre_resultats = 0;
     }
 }
 ?>
@@ -69,7 +70,6 @@ if (!empty($depart) && !empty($arrivee)) {
                 <!-- FORMULAIRE DE RECHERCHE PRINCIPAL -->
                 <div class="search-form-container">
                     <form method="GET" action="?" class="search-form">
-                        <!-- Champ caché pour maintenir la page -->
                         <input type="hidden" name="page" value="search">
 
                         <div class="row g-3">
@@ -93,7 +93,7 @@ if (!empty($depart) && !empty($arrivee)) {
                                     required>
                             </div>
 
-                            <!-- Date (optionnelle) -->
+                            <!-- Date optionnelle -->
                             <div class="col-md-4">
                                 <input type="date"
                                     class="form-control search-input"
@@ -109,7 +109,6 @@ if (!empty($depart) && !empty($arrivee)) {
                             </button>
 
                             <?php if ($recherche_effectuee): ?>
-                                <!-- Bouton pour nouvelle recherche -->
                                 <a href="?page=search" class="btn btn-outline-secondary ms-3">
                                     <i class="fas fa-times"></i> Nouvelle recherche
                                 </a>
@@ -126,10 +125,10 @@ if (!empty($depart) && !empty($arrivee)) {
 <section class="search-results-section">
     <div class="container">
 
-        <?php if (isset($erreur_recherche)): ?>
+        <?php if (!empty($erreur_recherche)): ?>
             <!-- AFFICHAGE D'ERREUR -->
             <div class="alert alert-danger" role="alert">
-                <i class="fas fa-exclamation-triangle"></i> <?= $erreur_recherche ?>
+                <i class="fas fa-exclamation-triangle"></i> <?= htmlspecialchars($erreur_recherche) ?>
             </div>
 
         <?php elseif ($recherche_effectuee): ?>
@@ -143,7 +142,6 @@ if (!empty($depart) && !empty($arrivee)) {
                         </h4>
 
                         <?php if ($nombre_resultats > 0): ?>
-                            <!-- Affichage du nombre de résultats -->
                             <div class="filtres-info">
                                 <?= $nombre_resultats ?> trajet<?= $nombre_resultats > 1 ? 's' : '' ?> trouvé<?= $nombre_resultats > 1 ? 's' : '' ?>
                             </div>
@@ -194,7 +192,6 @@ if (!empty($depart) && !empty($arrivee)) {
                             </button>
 
                             <?php if (!empty($max_price) || !empty($fuel_type)): ?>
-                                <!-- Bouton pour effacer les filtres -->
                                 <a href="?page=search&depart=<?= urlencode($depart) ?>&arrivee=<?= urlencode($arrivee) ?>&date=<?= urlencode($date) ?>"
                                     class="btn btn-outline-secondary btn-sm w-100 mt-2">
                                     <i class="fas fa-eraser"></i> Effacer filtres
@@ -216,7 +213,6 @@ if (!empty($depart) && !empty($arrivee)) {
                         </h2>
 
                         <?php if (!empty($max_price) || !empty($fuel_type)): ?>
-                            <!-- Affichage des filtres actifs -->
                             <div class="filtres-actifs">
                                 <span class="text-muted">Filtres actifs :</span>
                                 <?php if (!empty($max_price)): ?>
@@ -239,13 +235,11 @@ if (!empty($depart) && !empty($arrivee)) {
                                         <!-- COLONNE 1: INFORMATIONS DU TRAJET -->
                                         <div class="col-md-6">
                                             <div class="trip-route">
-                                                <!-- Titre du trajet (ex: Paris → Lyon) -->
                                                 <h4 class="route-cities">
                                                     <?= htmlspecialchars($trip['departure_city']) ?>
                                                     <i class="fas fa-arrow-right text-success"></i>
                                                     <?= htmlspecialchars($trip['arrival_city']) ?>
                                                 </h4>
-                                                <!-- Date et heure -->
                                                 <p class="route-time">
                                                     <i class="fas fa-calendar"></i>
                                                     <?= date('d/m/Y', strtotime($trip['departure_time'])) ?>
@@ -261,22 +255,18 @@ if (!empty($depart) && !empty($arrivee)) {
                                         <div class="col-md-3">
                                             <div class="trip-driver">
                                                 <div class="driver-info">
-                                                    <!-- Avatar avec initiale du conducteur -->
                                                     <div class="driver-avatar">
                                                         <?= strtoupper(substr($trip['driver_name'], 0, 1)) ?>
                                                     </div>
 
                                                     <div class="driver-details">
-                                                        <!-- Nom du conducteur -->
                                                         <strong><?= htmlspecialchars($trip['driver_name']) ?></strong>
 
-                                                        <!-- Note du conducteur (temporaire, à connecter à la BDD plus tard) -->
                                                         <div class="driver-rating">
                                                             <span class="stars">★★★★☆</span>
                                                             <span class="rating-text">4.2/5</span>
                                                         </div>
 
-                                                        <!-- VÉHICULE AVEC BADGE ÉCOLOGIQUE EN LIGNE -->
                                                         <div class="vehicle-info">
                                                             <small class="text-muted">
                                                                 <?= htmlspecialchars($trip['brand']) ?> <?= htmlspecialchars($trip['model']) ?>
@@ -293,12 +283,10 @@ if (!empty($depart) && !empty($arrivee)) {
                                         <!-- COLONNE 3: PRIX ET NOMBRE DE PLACES -->
                                         <div class="col-md-3 text-end">
                                             <div class="trip-booking">
-                                                <!-- Prix affiché en grand -->
                                                 <div class="trip-price">
                                                     <span class="price-amount"><?= number_format($trip['price_per_seat'], 0) ?>€</span>
                                                     <small class="price-label">par place</small>
                                                 </div>
-                                                <!-- Nombre de places disponibles -->
                                                 <div class="trip-seats">
                                                     <i class="fas fa-users"></i>
                                                     <?= $trip['available_seats'] ?> place<?= $trip['available_seats'] > 1 ? 's' : '' ?>
@@ -307,23 +295,20 @@ if (!empty($depart) && !empty($arrivee)) {
                                         </div>
                                     </div>
 
-                                    <!-- SECTION BOTTOM: PRÉFÉRENCES + BOUTON SUR LA MÊME LIGNE -->
+                                    <!-- SECTION BOTTOM: PRÉFÉRENCES + BOUTON -->
                                     <?php if (!empty($trip['preferences'])): ?>
                                         <div class="row mt-2">
                                             <div class="col-12">
                                                 <div class="trip-preferences">
-                                                    <!-- Préférences avec limitation de texte -->
                                                     <div class="preferences-content">
                                                         <small class="text-muted">
                                                             <i class="fas fa-info-circle"></i>
                                                             Préférences :
                                                         </small>
-                                                        <!-- Le title permet de voir le texte complet au survol -->
                                                         <span class="preferences-badge" title="<?= htmlspecialchars($trip['preferences']) ?>">
                                                             <?= htmlspecialchars($trip['preferences']) ?>
                                                         </span>
                                                     </div>
-                                                    <!-- Bouton "Voir détail" à côté des préférences -->
                                                     <a href="?page=detail&id=<?= $trip['id'] ?>"
                                                         class="btn btn-outline-success btn-sm">
                                                         <i class="fas fa-eye"></i> Voir détail
@@ -332,11 +317,10 @@ if (!empty($depart) && !empty($arrivee)) {
                                             </div>
                                         </div>
                                     <?php else: ?>
-                                        <!-- Si pas de préférences, bouton seul -->
                                         <div class="row mt-2">
                                             <div class="col-12">
                                                 <div class="trip-preferences">
-                                                    <div></div> <!-- Espace vide pour alignement -->
+                                                    <div></div>
                                                     <a href="?page=detail&id=<?= $trip['id'] ?>"
                                                         class="btn btn-outline-success btn-sm">
                                                         <i class="fas fa-eye"></i> Voir détail
@@ -350,7 +334,7 @@ if (!empty($depart) && !empty($arrivee)) {
                         </div>
                     <?php else: ?>
 
-                        <!-- AUCUN RÉSULTAT TROUVÉ - VERSION AMÉLIORÉE -->
+                        <!-- AUCUN RÉSULTAT TROUVÉ -->
                         <div class="no-results">
                             <div class="text-center py-5">
                                 <i class="fas fa-search fa-4x text-muted mb-4"></i>
@@ -379,9 +363,9 @@ if (!empty($depart) && !empty($arrivee)) {
                                 <hr class="my-4">
                                 <h6 class="text-muted">Suggestions populaires :</h6>
                                 <div class="d-flex flex-wrap gap-2 justify-content-center">
-                                    <a href="?page=search&departure=Paris&arrival=Lyon" class="badge bg-light text-dark text-decoration-none">Paris → Lyon</a>
-                                    <a href="?page=search&departure=Marseille&arrival=Nice" class="badge bg-light text-dark text-decoration-none">Marseille → Nice</a>
-                                    <a href="?page=search&departure=Bordeaux&arrival=Toulouse" class="badge bg-light text-dark text-decoration-none">Bordeaux → Toulouse</a>
+                                    <a href="?page=search&depart=Paris&arrivee=Lyon" class="badge bg-light text-dark text-decoration-none">Paris → Lyon</a>
+                                    <a href="?page=search&depart=Marseille&arrivee=Nice" class="badge bg-light text-dark text-decoration-none">Marseille → Nice</a>
+                                    <a href="?page=search&depart=Bordeaux&arrivee=Toulouse" class="badge bg-light text-dark text-decoration-none">Bordeaux → Toulouse</a>
                                 </div>
                             </div>
                         </div>
@@ -396,7 +380,6 @@ if (!empty($depart) && !empty($arrivee)) {
                     <h3>Recherches populaires</h3>
                     <p class="text-muted mb-4">Découvrez les trajets les plus demandés</p>
 
-                    <!-- Liens vers des recherches pré-définies -->
                     <div class="row g-3 justify-content-center">
                         <div class="col-auto">
                             <a href="?page=search&depart=Paris&arrivee=Lyon" class="btn btn-outline-success">
@@ -423,33 +406,40 @@ if (!empty($depart) && !empty($arrivee)) {
 <?php
 /*
 ================================================
-NOTES DE DÉVELOPPEMENT:
+FONCTIONNEMENT DU FICHIER SEARCH.PHP
 
-1. FONCTIONNALITÉS IMPLÉMENTÉES:
-   ✅ Formulaire de recherche avec villes + date
-   ✅ Filtres prix et type de véhicule
-   ✅ Affichage des résultats avec toutes les infos
-   ✅ Gestion cas "aucun résultat"
-   ✅ Suggestions de recherches populaires
-   ✅ Navigation vers page détail
-   ✅ Badge écologique "⚡Éco" en ligne
-   ✅ Préférences + bouton sur même ligne
+Ce fichier gère la recherche et l'affichage des trajets de covoiturage.
 
-2. À FAIRE PLUS TARD:
-   - Connecter la vraie note du conducteur depuis la BDD
-   - Ajouter la géolocalisation pour auto-complétion
-   - Implémenter la recherche AJAX (sans rechargement)
-   - Ajouter tri des résultats (prix, heure, note)
+LOGIQUE PRINCIPALE :
+1. Récupération des critères de recherche depuis l'URL (GET)
+2. Utilisation de Trip::search() pour récupérer les trajets correspondants  
+3. Application des filtres prix et type de véhicule sur les résultats
+4. Affichage des résultats avec toutes les informations nécessaires
 
-3. SÉCURITÉ:
-   - Toutes les données utilisateur sont échappées avec htmlspecialchars()
-   - Utilisation de requêtes préparées dans searchTrips()
-   - Validation des filtres (min/max sur prix)
+ARCHITECTURE POO UTILISÉE :
+- Trip::search() remplace la fonction searchTrips() procédurale
+- Gestion centralisée des exceptions dans try/catch
+- Méthode statique réutilisable dans d'autres contextes
 
-4. PERFORMANCE:
-   - CSS en fichier séparé pour cache navigateur
-   - Animations CSS au lieu de JavaScript
-   - Sticky sidebar uniquement sur desktop
+FONCTIONNALITÉS IMPLÉMENTÉES :
+- Formulaire de recherche avec villes et date optionnelle
+- Filtres dynamiques pour prix maximum et type de carburant
+- Affichage détaillé des trajets avec conducteur et véhicule
+- Gestion des cas "aucun résultat" avec suggestions
+- Badges écologiques pour véhicules électriques
+- Navigation vers page détail pour réservation
+
+SÉCURITÉ ET PERFORMANCE :
+- Échappement HTML de toutes les données utilisateur
+- Requêtes préparées via la classe Trip
+- Gestion d'erreurs robuste avec messages utilisateur
+- Conservation des critères de recherche dans les filtres
+
+AMÉLIORATIONS APPORTÉES :
+- Code plus maintenable avec classes POO
+- Gestion d'erreurs centralisée dans Trip::search()
+- Réutilisabilité de la logique de recherche
+- Interface utilisateur cohérente et responsive
 ================================================
 */
 ?>
