@@ -1,138 +1,41 @@
 <?php
+/*
+================================================
+FICHIER: pages/admin-dashboard.php - Mon tableau de bord admin
+Description: Page principale du back-office avec toutes les stats importantes
+================================================
+*/
 
-/**
- * ========================================
- * PAGE : pages/admin/dashboard.php
- * ========================================
- * 
- * DESCRIPTION :
- * Tableau de bord principal de l'espace administrateur
- * Affiche les statistiques globales de la plateforme EcoRide
- * 
- * ENTRÉES :
- * - Session admin vérifiée (via admin_guard.php)
- * - Aucun paramètre GET/POST requis
- * 
- * TRAITEMENTS :
- * 1. Récupération statistiques utilisateurs (total, actifs, inactifs, par rôle)
- * 2. Récupération statistiques trajets (total, actifs, terminés, annulés)
- * 3. Récupération statistiques réservations (total, confirmées, annulées)
- * 4. Calcul total crédits en circulation
- * 5. Récupération dernières inscriptions (7 derniers jours)
- * 6. Récupération dernières réservations
- * 7. Calcul taux d'occupation moyen des trajets
- * 
- * SORTIES :
- * - Affichage HTML des cartes statistiques
- * - Tableaux des dernières activités
- * - Navigation vers autres sections admin
- * 
- * SÉCURITÉ :
- * - Protection admin_guard (rôle 'admin' requis)
- * - Lecture seule (aucune modification de données)
- * - Échappement HTML pour affichage sécurisé
- * ========================================
- */
-
-// Définir le titre de la page
-$page_title = "Dashboard Admin - EcoRide";
-
-// Protection : Seuls les admins peuvent accéder
+// Inclusion des fonctions de session et classes POO
 require_once __DIR__ . '/../includes/session.php';
 require_once __DIR__ . '/../includes/admin_guard.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../classes/Admin.php';
+
+// Protection : Seuls les admins peuvent accéder
 requireAdmin();
 
-// Connexion base de données
-require_once __DIR__ . '/../config/database.php';
+// Configuration de la page
+$page_title = "Dashboard Admin - EcoRide";
 
 // ========================================
-// RÉCUPÉRATION DES STATISTIQUES
+// RÉCUPÉRATION DES STATISTIQUES AVEC POO
 // ========================================
 
 try {
-    // 1. STATISTIQUES UTILISATEURS
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM users");
-    $total_users = $stmt->fetchColumn();
-
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM users WHERE is_active = 1");
-    $active_users = $stmt->fetchColumn();
-
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM users WHERE is_active = 0");
-    $inactive_users = $stmt->fetchColumn();
-
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM users WHERE role = 'driver'");
-    $drivers = $stmt->fetchColumn();
-
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM users WHERE role = 'passenger'");
-    $passengers = $stmt->fetchColumn();
-
-    // Nouvelles inscriptions (7 derniers jours)
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
-    $new_users_week = $stmt->fetchColumn();
-
-    // 2. STATISTIQUES TRAJETS
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM trips");
-    $total_trips = $stmt->fetchColumn();
-
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM trips WHERE status = 'active'");
-    $active_trips = $stmt->fetchColumn();
-
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM trips WHERE status = 'completed'");
-    $completed_trips = $stmt->fetchColumn();
-
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM trips WHERE status = 'cancelled'");
-    $cancelled_trips = $stmt->fetchColumn();
-
-    // Trajets créés cette semaine
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM trips WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
-    $new_trips_week = $stmt->fetchColumn();
-
-    // 3. STATISTIQUES RÉSERVATIONS
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM bookings");
-    $total_bookings = $stmt->fetchColumn();
-
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM bookings WHERE status = 'confirmed'");
-    $confirmed_bookings = $stmt->fetchColumn();
-
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM bookings WHERE status = 'cancelled'");
-    $cancelled_bookings = $stmt->fetchColumn();
-
-    // Réservations cette semaine
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM bookings WHERE booking_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
-    $new_bookings_week = $stmt->fetchColumn();
-
-    // 4. STATISTIQUES FINANCIÈRES
-    $stmt = $pdo->query("SELECT SUM(credits) as total FROM users");
-    $total_credits = $stmt->fetchColumn() ?? 0;
-
-    $stmt = $pdo->query("SELECT SUM(total_price) as total FROM bookings WHERE status = 'confirmed'");
-    $total_revenue = $stmt->fetchColumn() ?? 0;
-
-    // 5. DERNIÈRES INSCRIPTIONS
-    $stmt = $pdo->query("
-        SELECT id, username, email, role, created_at 
-        FROM users 
-        ORDER BY created_at DESC 
-        LIMIT 5
-    ");
-    $recent_users = $stmt->fetchAll();
-
-    // 6. DERNIÈRES RÉSERVATIONS
-    $stmt = $pdo->query("
-        SELECT b.*, 
-               u.username as passenger_name,
-               t.departure_city, 
-               t.arrival_city,
-               t.departure_time
-        FROM bookings b
-        JOIN users u ON b.passenger_id = u.id
-        JOIN trips t ON b.trip_id = t.id
-        ORDER BY b.booking_date DESC
-        LIMIT 5
-    ");
-    $recent_bookings = $stmt->fetchAll();
-
-    // 7. TAUX D'OCCUPATION MOYEN
+    // Statistiques globales avec Admin::getDashboardStats()
+    $dashboardStats = Admin::getDashboardStats($pdo);
+    
+    // Statistiques détaillées avec les méthodes spécialisées
+    $userStats = Admin::getUsersStats($pdo);
+    $tripStats = Admin::getTripsStats($pdo);
+    $bookingStats = Admin::getBookingsStats($pdo);
+    
+    // Derniers éléments avec Admin::getRecentUsers() et Admin::getRecentBookings()
+    $recent_users = Admin::getRecentUsers($pdo, 5);
+    $recent_bookings = Admin::getRecentBookings($pdo, 5);
+    
+    // Calcul du taux d'occupation moyen (logique spécifique qui reste en SQL)
     $stmt = $pdo->query("
         SELECT 
             AVG((v.seats - t.available_seats) / v.seats * 100) as avg_occupancy
@@ -141,11 +44,25 @@ try {
         WHERE t.status = 'completed'
     ");
     $avg_occupancy = round($stmt->fetchColumn() ?? 0, 1);
-} catch (PDOException $e) {
+    
+} catch (Exception $e) {
     $error_message = "Erreur lors de la récupération des statistiques : " . $e->getMessage();
+    
+    // Valeurs par défaut en cas d'erreur
+    $dashboardStats = [
+        'users_count' => 0, 'users_active' => 0, 'trips_count' => 0, 
+        'trips_active' => 0, 'bookings_count' => 0, 'bookings_confirmed' => 0,
+        'total_credits' => 0, 'average_rating' => 0
+    ];
+    $userStats = ['total' => 0, 'active' => 0, 'new_this_month' => 0, 'with_vehicles' => 0, 'with_trips' => 0];
+    $tripStats = ['total' => 0, 'active' => 0, 'completed' => 0, 'cancelled' => 0, 'average_price' => 0, 'total_seats_offered' => 0];
+    $bookingStats = ['total' => 0, 'confirmed' => 0, 'cancelled' => 0, 'total_revenue' => 0, 'average_booking' => 0];
+    $recent_users = [];
+    $recent_bookings = [];
+    $avg_occupancy = 0;
 }
-
 ?>
+
 <div class="admin-container">
 
     <!-- En-tête Admin -->
@@ -179,7 +96,7 @@ try {
         </a>
     </div>
 
-    <!-- Grille de statistiques -->
+    <!-- Grille de statistiques principales -->
     <div class="stats-grid">
 
         <!-- Card Utilisateurs -->
@@ -188,14 +105,14 @@ try {
                 <i class="fas fa-users"></i>
             </div>
             <div class="label">Total Utilisateurs</div>
-            <div class="value"><?= number_format($total_users) ?></div>
+            <div class="value"><?= number_format($dashboardStats['users_count']) ?></div>
             <div class="change positive">
-                <i class="fas fa-arrow-up"></i> +<?= $new_users_week ?> cette semaine
+                <i class="fas fa-arrow-up"></i> +<?= $userStats['new_this_month'] ?> ce mois
             </div>
             <hr>
             <small class="text-muted">
-                <i class="fas fa-check-circle text-success"></i> <?= $active_users ?> actifs |
-                <i class="fas fa-times-circle text-danger"></i> <?= $inactive_users ?> inactifs
+                <i class="fas fa-check-circle text-success"></i> <?= $dashboardStats['users_active'] ?> actifs |
+                <i class="fas fa-times-circle text-danger"></i> <?= $dashboardStats['users_count'] - $dashboardStats['users_active'] ?> inactifs
             </small>
         </div>
 
@@ -205,14 +122,14 @@ try {
                 <i class="fas fa-car"></i>
             </div>
             <div class="label">Total Trajets</div>
-            <div class="value"><?= number_format($total_trips) ?></div>
+            <div class="value"><?= number_format($dashboardStats['trips_count']) ?></div>
             <div class="change positive">
-                <i class="fas fa-arrow-up"></i> +<?= $new_trips_week ?> cette semaine
+                <i class="fas fa-arrow-up"></i> <?= $tripStats['total_seats_offered'] ?> places offertes
             </div>
             <hr>
             <small class="text-muted">
-                <i class="fas fa-check text-success"></i> <?= $active_trips ?> actifs |
-                <i class="fas fa-flag-checkered"></i> <?= $completed_trips ?> terminés
+                <i class="fas fa-check text-success"></i> <?= $dashboardStats['trips_active'] ?> actifs |
+                <i class="fas fa-flag-checkered"></i> <?= $tripStats['completed'] ?> terminés
             </small>
         </div>
 
@@ -222,14 +139,14 @@ try {
                 <i class="fas fa-ticket-alt"></i>
             </div>
             <div class="label">Total Réservations</div>
-            <div class="value"><?= number_format($total_bookings) ?></div>
+            <div class="value"><?= number_format($dashboardStats['bookings_count']) ?></div>
             <div class="change positive">
-                <i class="fas fa-arrow-up"></i> +<?= $new_bookings_week ?> cette semaine
+                <i class="fas fa-arrow-up"></i> <?= $bookingStats['average_booking'] ?> € moy.
             </div>
             <hr>
             <small class="text-muted">
-                <i class="fas fa-check text-success"></i> <?= $confirmed_bookings ?> confirmées |
-                <i class="fas fa-times text-danger"></i> <?= $cancelled_bookings ?> annulées
+                <i class="fas fa-check text-success"></i> <?= $dashboardStats['bookings_confirmed'] ?> confirmées |
+                <i class="fas fa-times text-danger"></i> <?= $bookingStats['cancelled'] ?> annulées
             </small>
         </div>
 
@@ -239,41 +156,44 @@ try {
                 <i class="fas fa-coins"></i>
             </div>
             <div class="label">Crédits en Circulation</div>
-            <div class="value"><?= number_format($total_credits) ?></div>
+            <div class="value"><?= number_format($dashboardStats['total_credits']) ?></div>
             <div class="change">
-                <i class="fas fa-euro-sign"></i> Revenus : <?= number_format($total_revenue) ?> crédits
+                <i class="fas fa-euro-sign"></i> Revenus : <?= number_format($bookingStats['total_revenue']) ?> crédits
             </div>
             <hr>
             <small class="text-muted">
-                <i class="fas fa-percentage"></i> Taux occupation : <?= $avg_occupancy ?>%
+                <i class="fas fa-percentage"></i> Taux occupation : <?= $avg_occupancy ?>% |
+                <i class="fas fa-star"></i> Note moy. : <?= $dashboardStats['average_rating'] ?>/5
             </small>
         </div>
 
     </div>
 
-    <!-- Répartition Utilisateurs -->
+    <!-- Répartition Utilisateurs et Trajets -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="admin-table-container">
-                <h4><i class="fas fa-users"></i> Répartition par rôle</h4>
+                <h4><i class="fas fa-users"></i> Répartition utilisateurs</h4>
                 <hr>
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span><i class="fas fa-steering-wheel text-success"></i> Conducteurs</span>
-                    <strong><?= $drivers ?> (<?= $total_users > 0 ? round($drivers / $total_users * 100, 1) : 0 ?>%)</strong>
+                    <span><i class="fas fa-car text-success"></i> Avec véhicules</span>
+                    <strong><?= $userStats['with_vehicles'] ?> (<?= $userStats['total'] > 0 ? round($userStats['with_vehicles'] / $userStats['total'] * 100, 1) : 0 ?>%)</strong>
                 </div>
                 <div class="progress mb-3" style="height: 25px;">
-                    <div class="progress-bar bg-success" style="width: <?= $total_users > 0 ? round($drivers / $total_users * 100, 1) : 0 ?>%">
-                        <?= $drivers ?>
+                    <?php $vehicles_percent = $userStats['total'] > 0 ? round($userStats['with_vehicles'] / $userStats['total'] * 100, 1) : 0; ?>
+                    <div class="progress-bar bg-success" style="width: <?= $vehicles_percent ?>%">
+                        <?= $userStats['with_vehicles'] ?>
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span><i class="fas fa-user text-primary"></i> Passagers</span>
-                    <strong><?= $passengers ?> (<?= $total_users > 0 ? round($passengers / $total_users * 100, 1) : 0 ?>%)</strong>
+                    <span><i class="fas fa-route text-primary"></i> Conducteurs actifs</span>
+                    <strong><?= $userStats['with_trips'] ?> (<?= $userStats['total'] > 0 ? round($userStats['with_trips'] / $userStats['total'] * 100, 1) : 0 %>%)</strong>
                 </div>
                 <div class="progress" style="height: 25px;">
-                    <div class="progress-bar bg-primary" style="width: <?= $total_users > 0 ? round($passengers / $total_users * 100, 1) : 0 ?>%">
-                        <?= $passengers ?>
+                    <?php $trips_percent = $userStats['total'] > 0 ? round($userStats['with_trips'] / $userStats['total'] * 100, 1) : 0; ?>
+                    <div class="progress-bar bg-primary" style="width: <?= $trips_percent ?>%">
+                        <?= $userStats['with_trips'] ?>
                     </div>
                 </div>
             </div>
@@ -285,21 +205,21 @@ try {
                 <hr>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span><i class="fas fa-check-circle text-success"></i> Actifs</span>
-                    <strong><?= $active_trips ?> (<?= $total_trips > 0 ? round($active_trips / $total_trips * 100, 1) : 0 ?>%)</strong>
+                    <strong><?= $tripStats['active'] ?> (<?= $tripStats['total'] > 0 ? round($tripStats['active'] / $tripStats['total'] * 100, 1) : 0 ?>%)</strong>
                 </div>
                 <div class="progress mb-3" style="height: 25px;">
-                    <div class="progress-bar bg-success" style="width: <?= $total_trips > 0 ? round($active_trips / $total_trips * 100, 1) : 0 ?>%">
-                        <?= $active_trips ?>
+                    <div class="progress-bar bg-success" style="width: <?= $tripStats['total'] > 0 ? round($tripStats['active'] / $tripStats['total'] * 100, 1) : 0 ?>%">
+                        <?= $tripStats['active'] ?>
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span><i class="fas fa-flag-checkered text-primary"></i> Terminés</span>
-                    <strong><?= $completed_trips ?> (<?= $total_trips > 0 ? round($completed_trips / $total_trips * 100, 1) : 0 ?>%)</strong>
+                    <strong><?= $tripStats['completed'] ?> (<?= $tripStats['total'] > 0 ? round($tripStats['completed'] / $tripStats['total'] * 100, 1) : 0 %>%)</strong>
                 </div>
                 <div class="progress" style="height: 25px;">
-                    <div class="progress-bar bg-primary" style="width: <?= $total_trips > 0 ? round($completed_trips / $total_trips * 100, 1) : 0 ?>%">
-                        <?= $completed_trips ?>
+                    <div class="progress-bar bg-primary" style="width: <?= $tripStats['total'] > 0 ? round($tripStats['completed'] / $tripStats['total'] * 100, 1) : 0 ?>%">
+                        <?= $tripStats['completed'] ?>
                     </div>
                 </div>
             </div>
@@ -396,3 +316,25 @@ try {
     </div>
 
 </div>
+
+<?php
+/*
+===============================================
+Bon, j'ai pas mal simplifié cette page !
+
+Avant j'avais 15 requêtes SQL partout dans le code, c'était le bordel.
+Maintenant j'utilise mes classes Admin avec getDashboardStats() qui me récupère
+tout d'un coup. Beaucoup plus propre.
+
+J'ai aussi séparé les calculs de pourcentages dans des variables PHP séparées
+pour éviter les erreurs de syntaxe dans les attributs style.
+
+La logique est maintenant centralisée dans la classe Admin, donc si je veux
+réutiliser ces stats ailleurs, c'est facile.
+
+Et si une erreur arrive, j'ai des valeurs par défaut pour que la page plante pas.
+
+Prochaine étape: refactoriser admin-users.php avec User::ban(), User::delete(), etc.
+===============================================
+*/
+?>
