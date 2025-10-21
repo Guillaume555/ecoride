@@ -389,6 +389,9 @@ $user_profile = $stmt->fetch();
                         <a href="?page=create-trip" class="btn btn-outline-primary">
                             <i class="fas fa-plus"></i> Proposer un trajet
                         </a>
+                        <a href="?page=add-vehicle" class="btn btn-outline-info">
+                            <i class="fas fa-car"></i> Mes véhicules
+                        </a>
                         <hr>
                         <a href="?page=logout" class="btn btn-outline-danger">
                             <i class="fas fa-sign-out-alt"></i> Se déconnecter
