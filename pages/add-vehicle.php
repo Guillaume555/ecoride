@@ -1,18 +1,19 @@
 <?php
+/*
+================================================
+FICHIER: pages/add-vehicle.php - Ajout/Gestion des véhicules (VERSION POO)
+Description: Permet aux utilisateurs d'ajouter leurs véhicules avec architecture POO
+================================================
+*/
 
-/**
- * EcoRide - Ajout/Gestion des véhicules
- * Permet aux utilisateurs d'ajouter leurs véhicules
- */
-
-// Variables pour template
-$page_title = "Mes véhicules - EcoRide";
-$extra_js = ['create-trip.js']; //Js spécifique a la page
-
-
-require_once 'config/database.php';
+// Inclusion des fonctions de session et classes POO
 require_once 'includes/session.php';
-require_once 'config/mongodb.php';
+require_once 'config/database.php';
+require_once 'classes/Vehicle.php';
+
+// Configuration de la page
+$page_title = "Mes véhicules - EcoRide";
+$extra_js = ['create-trip.js'];
 
 // Vérification connexion utilisateur
 requireLogin();
@@ -22,7 +23,7 @@ $errors = [];
 $success = '';
 $formData = [];
 
-// Traitement du formulaire d'ajout
+// Traitement du formulaire d'ajout avec POO
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_vehicle'])) {
 
     $formData = [
@@ -35,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_vehicle'])) {
         'year' => (int)($_POST['year'] ?? 0)
     ];
 
-    // Validation
+    // Validation de base (Vehicle::create() fera les validations avancées)
     if (empty($formData['brand'])) {
         $errors[] = "La marque est obligatoire.";
     }
@@ -50,8 +51,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_vehicle'])) {
 
     if (empty($formData['license_plate'])) {
         $errors[] = "La plaque d'immatriculation est obligatoire.";
-    } elseif (!preg_match('/^[A-Z]{2}-\d{3}-[A-Z]{2}$/', $formData['license_plate'])) {
-        $errors[] = "Format de plaque invalide (ex: AB-123-CD).";
     }
 
     if ($formData['seats'] < 2 || $formData['seats'] > 9) {
@@ -66,65 +65,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_vehicle'])) {
         $errors[] = "Année invalide.";
     }
 
-    // Vérifier unicité plaque d'immatriculation
+    // Si validation de base OK, utiliser Vehicle::create() avec POO
     if (empty($errors)) {
         try {
-            $stmt = $pdo->prepare("SELECT id FROM vehicles WHERE license_plate = ?");
-            $stmt->execute([$formData['license_plate']]);
-            if ($stmt->fetch()) {
-                $errors[] = "Cette plaque d'immatriculation est déjà enregistrée.";
-            }
-        } catch (PDOException $e) {
-            $errors[] = "Erreur lors de la vérification.";
-        }
-    }
-
-    // Insérer le véhicule
-    if (empty($errors)) {
-        try {
-            $stmt = $pdo->prepare("
-                INSERT INTO vehicles (user_id, brand, model, color, license_plate, seats, fuel_type, year)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-
-            $stmt->execute([
-                $user['id'],
-                $formData['brand'],
-                $formData['model'],
-                $formData['color'],
-                $formData['license_plate'],
-                $formData['seats'],
-                $formData['fuel_type'],
-                $formData['year']
-            ]);
-
-            // Log MongoDB
-            logUserActivity($user['id'], 'add_vehicle', [
-                'brand' => $formData['brand'],
-                'model' => $formData['model'],
-                'license_plate' => $formData['license_plate'],
-                'fuel_type' => $formData['fuel_type']
-            ]);
+            // Création du véhicule avec POO (validation automatique intégrée)
+            $vehicle = new Vehicle($pdo);
+            $vehicleId = $vehicle->create($user['id'], $formData);
 
             $success = "Véhicule ajouté avec succès !";
             $formData = []; // Reset form
 
-        } catch (PDOException $e) {
-            $errors[] = "Erreur lors de l'ajout du véhicule.";
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
         }
     }
 }
 
-// Récupération des véhicules existants
+// Récupération des véhicules existants avec POO
 try {
-    $stmt = $pdo->prepare("
-        SELECT * FROM vehicles 
-        WHERE user_id = ? 
-        ORDER BY created_at DESC
-    ");
-    $stmt->execute([$user['id']]);
-    $userVehicles = $stmt->fetchAll();
-} catch (PDOException $e) {
+    $userVehicles = Vehicle::getByUser($pdo, $user['id']);
+} catch (Exception $e) {
     $userVehicles = [];
 }
 ?>
@@ -186,10 +146,25 @@ try {
                                                 <i class="fas fa-gas-pump"></i> <?= ucfirst($vehicle['fuel_type']) ?><br>
                                                 <i class="fas fa-calendar"></i> <?= $vehicle['year'] ?>
                                             </p>
-                                            <?php if ($vehicle['fuel_type'] === 'électrique'): ?>
-                                                <span class="badge bg-success">Écologique</span>
-                                            <?php elseif ($vehicle['fuel_type'] === 'hybride'): ?>
-                                                <span class="badge bg-info">Hybride</span>
+
+                                            <!-- Affichage badge écologique avec POO -->
+                                            <?php
+                                            try {
+                                                $vehicleObj = new Vehicle($pdo, $vehicle['id']);
+                                                if ($vehicleObj->isEcological()):
+                                            ?>
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-leaf"></i> Écologique
+                                                    </span>
+                                            <?php endif;
+                                            } catch (Exception $e) { /* Continue sans badge */
+                                            } ?>
+
+                                            <!-- Affichage trajets actifs -->
+                                            <?php if (($vehicle['active_trips_count'] ?? 0) > 0): ?>
+                                                <span class="badge bg-info ms-1">
+                                                    <?= $vehicle['active_trips_count'] ?> trajet(s) actif(s)
+                                                </span>
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -254,6 +229,10 @@ try {
                                     pattern="[A-Z]{2}-[0-9]{3}-[A-Z]{2}"
                                     maxlength="9"
                                     required>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle"></i>
+                                    Format automatiquement validé par le système
+                                </div>
                             </div>
                         </div>
 
@@ -319,8 +298,108 @@ try {
                 <?php endif; ?>
 
             </div>
+
+            <!-- Sidebar conseils véhicules -->
+            <div class="col-lg-4">
+                <div class="auth-card">
+                    <h5 class="text-success mb-3">
+                        <i class="fas fa-lightbulb"></i> Conseils véhicules
+                    </h5>
+
+                    <div class="mb-3">
+                        <h6><i class="fas fa-leaf text-success"></i> Écologique</h6>
+                        <p class="small text-muted">
+                            Les véhicules électriques et hybrides sont marqués comme écologiques et attirent plus de passagers.
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6><i class="fas fa-shield-alt text-primary"></i> Sécurité</h6>
+                        <p class="small text-muted">
+                            Assurez-vous que votre véhicule est en bon état et que votre assurance couvre le covoiturage.
+                        </p>
+                    </div>
+
+                    <div class="mb-0">
+                        <h6><i class="fas fa-users text-info"></i> Confort</h6>
+                        <p class="small text-muted">
+                            Un véhicule propre et confortable améliore l'expérience de vos passagers et vos notes.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Statistiques véhicules -->
+                <?php if (!empty($userVehicles)): ?>
+                    <div class="auth-card mt-4">
+                        <h6 class="text-secondary mb-3">
+                            <i class="fas fa-chart-pie"></i> Vos véhicules
+                        </h6>
+
+                        <?php
+                        // Statistiques des véhicules
+                        $totalVehicles = count($userVehicles);
+                        $ecologicalCount = 0;
+                        $totalActiveTrips = 0;
+
+                        foreach ($userVehicles as $vehicle) {
+                            try {
+                                $vehicleObj = new Vehicle($pdo, $vehicle['id']);
+                                if ($vehicleObj->isEcological()) {
+                                    $ecologicalCount++;
+                                }
+                            } catch (Exception $e) {
+                                // Continue without counting
+                            }
+                            $totalActiveTrips += ($vehicle['active_trips_count'] ?? 0);
+                        }
+                        ?>
+
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="fw-bold text-success"><?= $totalVehicles ?></div>
+                                <small class="text-muted">Total</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold text-info"><?= $ecologicalCount ?></div>
+                                <small class="text-muted">Écolos</small>
+                            </div>
+                            <div class="col-4">
+                                <div class="fw-bold text-primary"><?= $totalActiveTrips ?></div>
+                                <small class="text-muted">Trajets</small>
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+
         </div>
     </div>
 </section>
 
-<!-- Le javaScript est dans la page create-trip.js -->
+<?php
+/*
+================================================
+AMÉLIORATIONS APPORTÉES PAR LA REFACTORISATION POO
+
+AVANT (PROCÉDURAL) :
+- Validation manuelle du format de plaque d'immatriculation
+- Vérification d'unicité avec requête SQL directe
+- Insertion véhicule avec SQL direct sans validation
+- Récupération véhicules avec SQL direct
+
+APRÈS (POO) :
+- Vehicle::create() avec validation automatique intégrée
+- Vehicle::getByUser() pour récupération propre
+- Vehicle::isEcological() pour détection véhicules verts
+- Gestion d'erreurs centralisée avec exceptions
+
+BÉNÉFICES :
+- Validation automatique de la plaque (format français)
+- Vérification automatique de l'unicité
+- Gestion d'erreurs plus propre avec try/catch
+- Code réutilisable dans d'autres pages
+- Logique métier centralisée dans la classe Vehicle
+- Interface utilisateur améliorée avec badges automatiques
+================================================
+*/
+?>
