@@ -1,56 +1,25 @@
 <?php
+/*
+================================================
+FICHIER: pages/admin-users.php - Gestion utilisateurs administrateur
+Description: Interface d'administration des comptes utilisateurs avec actions POO
+================================================
+*/
 
-/**
- * ========================================
- * PAGE : pages/admin-users.php
- * ========================================
- * 
- * DESCRIPTION :
- * Page de gestion des utilisateurs pour l'administrateur
- * Permet de visualiser, modifier, bannir/débannir les utilisateurs
- * 
- * ENTRÉES :
- * - Session admin vérifiée (via admin_guard.php)
- * - GET 'action' : bannir, debannir, ajuster_credits
- * - GET 'user_id' : ID de l'utilisateur concerné
- * - GET 'search' : Recherche par nom/email
- * - GET 'filter_role' : Filtre par rôle (admin/driver/passenger)
- * - GET 'filter_status' : Filtre par statut (actif/inactif)
- * - POST 'credits' : Nouveau montant de crédits
- * 
- * TRAITEMENTS :
- * 1. Récupération liste utilisateurs avec filtres
- * 2. Gestion actions (bannir, débannir, ajuster crédits)
- * 3. Calcul statistiques par utilisateur (trajets, réservations)
- * 4. Recherche et filtres dynamiques
- * 5. Pagination si nombreux utilisateurs
- * 
- * SORTIES :
- * - Tableau liste utilisateurs avec actions
- * - Messages succès/erreur après actions
- * - Statistiques et filtres
- * 
- * SÉCURITÉ :
- * - Protection admin_guard (rôle 'admin' requis)
- * - Validation ID utilisateur
- * - Protection contre auto-bannissement
- * - Transactions SQL pour cohérence données
- * ========================================
- */
-
-// Définir le titre de la page
-$page_title = "Gestion Utilisateurs - Admin EcoRide";
-
-// Protection : Seuls les admins peuvent accéder
+// Inclusion des fonctions de session et classes POO
 require_once __DIR__ . '/../includes/session.php';
 require_once __DIR__ . '/../includes/admin_guard.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../classes/User.php';
+
+// Protection : Seuls les admins peuvent accéder
 requireAdmin();
 
-// Connexion base de données
-require_once __DIR__ . '/../config/database.php';
+// Configuration de la page
+$page_title = "Gestion Utilisateurs - Admin EcoRide";
 
 // ========================================
-// GESTION DES ACTIONS
+// Gestion des actions avec classes POO
 // ========================================
 
 $success_message = '';
@@ -65,47 +34,45 @@ if (isset($_GET['action']) && isset($_GET['user_id'])) {
         $error_message = "Vous ne pouvez pas vous bannir vous-même !";
     } else {
         try {
+            $userObj = new User($pdo, $user_id);
+
             switch ($action) {
                 case 'bannir':
-                    $stmt = $pdo->prepare("UPDATE users SET is_active = 0 WHERE id = ?");
-                    $stmt->execute([$user_id]);
+                    $userObj->ban();
                     $success_message = "Utilisateur banni avec succès.";
                     break;
 
                 case 'debannir':
-                    $stmt = $pdo->prepare("UPDATE users SET is_active = 1 WHERE id = ?");
-                    $stmt->execute([$user_id]);
+                    $userObj->unban();
                     $success_message = "Utilisateur débanni avec succès.";
                     break;
 
                 case 'delete':
                     // Vérifier que l'utilisateur n'a pas de trajets actifs
-                    $stmt = $pdo->prepare("SELECT COUNT(*) FROM trips WHERE driver_id = ? AND status = 'active'");
-                    $stmt->execute([$user_id]);
-                    $active_trips = $stmt->fetchColumn();
+                    $userTrips = $userObj->getTripsAsDriver();
+                    $activeTrips = 0;
 
-                    if ($active_trips > 0) {
+                    foreach ($userTrips as $trip) {
+                        if ($trip['status'] === 'active') {
+                            $activeTrips++;
+                        }
+                    }
+
+                    if ($activeTrips > 0) {
                         $error_message = "Impossible de supprimer : l'utilisateur a des trajets actifs.";
                     } else {
-                        // Supprimer les réservations, avis, puis l'utilisateur
-                        $pdo->beginTransaction();
-                        $pdo->prepare("DELETE FROM bookings WHERE passenger_id = ?")->execute([$user_id]);
-                        $pdo->prepare("DELETE FROM reviews WHERE reviewer_id = ? OR reviewed_id = ?")->execute([$user_id, $user_id]);
-                        $pdo->prepare("DELETE FROM trips WHERE driver_id = ?")->execute([$user_id]);
-                        $pdo->prepare("DELETE FROM vehicles WHERE user_id = ?")->execute([$user_id]);
-                        $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$user_id]);
-                        $pdo->commit();
+                        $userObj->delete();
                         $success_message = "Utilisateur supprimé avec succès.";
                     }
                     break;
             }
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             $error_message = "Erreur lors de l'action : " . $e->getMessage();
         }
     }
 }
 
-// Ajustement des crédits
+// Ajustement des crédits avec POO
 if (isset($_POST['ajuster_credits']) && isset($_POST['user_id']) && isset($_POST['credits'])) {
     $user_id = (int)$_POST['user_id'];
     $new_credits = (int)$_POST['credits'];
@@ -114,44 +81,39 @@ if (isset($_POST['ajuster_credits']) && isset($_POST['user_id']) && isset($_POST
         $error_message = "Le montant de crédits ne peut pas être négatif.";
     } else {
         try {
-            $stmt = $pdo->prepare("UPDATE users SET credits = ? WHERE id = ?");
-            $stmt->execute([$new_credits, $user_id]);
+            $userObj = new User($pdo, $user_id);
+            $userObj->updateCredits($new_credits);
             $success_message = "Crédits ajustés avec succès.";
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             $error_message = "Erreur lors de l'ajustement : " . $e->getMessage();
         }
     }
 }
 
 // ========================================
-// RÉCUPÉRATION FILTRES
+// Récupération des filtres et données
 // ========================================
 
 $search = $_GET['search'] ?? '';
 $filter_role = $_GET['filter_role'] ?? '';
 $filter_status = $_GET['filter_status'] ?? '';
 
-// ========================================
-// RÉCUPÉRATION LISTE UTILISATEURS
-// ========================================
-
+// Récupération liste utilisateurs avec filtres
 $sql = "SELECT id, username, email, phone, credits, role, created_at, is_active FROM users WHERE 1=1";
 $params = [];
 
-// Filtre recherche
+// Application des filtres
 if (!empty($search)) {
     $sql .= " AND (username LIKE ? OR email LIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
 }
 
-// Filtre rôle
 if (!empty($filter_role)) {
     $sql .= " AND role = ?";
     $params[] = $filter_role;
 }
 
-// Filtre statut
 if ($filter_status === 'active') {
     $sql .= " AND is_active = 1";
 } elseif ($filter_status === 'inactive') {
@@ -165,27 +127,24 @@ $stmt->execute($params);
 $users = $stmt->fetchAll();
 
 // ========================================
-// STATISTIQUES PAR UTILISATEUR
+// Fonction pour récupérer les statistiques utilisateur avec POO
 // ========================================
 
-function getUserStats($pdo, $user_id)
+function getUserStatsPOO($pdo, $user_id)
 {
-    // Nombre de trajets proposés
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM trips WHERE driver_id = ?");
-    $stmt->execute([$user_id]);
-    $trips_count = $stmt->fetchColumn();
+    try {
+        $userObj = new User($pdo, $user_id);
+        $trips = $userObj->getTripsAsDriver();
+        $bookings = $userObj->getTripsAsPassenger();
 
-    // Nombre de réservations
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM bookings WHERE passenger_id = ?");
-    $stmt->execute([$user_id]);
-    $bookings_count = $stmt->fetchColumn();
-
-    return [
-        'trips' => $trips_count,
-        'bookings' => $bookings_count
-    ];
+        return [
+            'trips' => count($trips),
+            'bookings' => count($bookings)
+        ];
+    } catch (Exception $e) {
+        return ['trips' => 0, 'bookings' => 0];
+    }
 }
-
 ?>
 
 <!-- Contenu de la page -->
@@ -227,23 +186,29 @@ function getUserStats($pdo, $user_id)
     </div>
 
     <!-- Statistiques rapides -->
+    <?php
+    $total_users = count($users);
+    $active_users = count(array_filter($users, fn($u) => $u['is_active'] == 1));
+    $banned_users = $total_users - $active_users;
+    ?>
+
     <div class="stats-grid mb-4">
         <div class="stat-card primary">
             <div class="icon primary"><i class="fas fa-users"></i></div>
             <div class="label">Total Utilisateurs</div>
-            <div class="value"><?= count($users) ?></div>
+            <div class="value"><?= $total_users ?></div>
         </div>
 
         <div class="stat-card success">
             <div class="icon success"><i class="fas fa-user-check"></i></div>
             <div class="label">Utilisateurs Actifs</div>
-            <div class="value"><?= count(array_filter($users, fn($u) => $u['is_active'] == 1)) ?></div>
+            <div class="value"><?= $active_users ?></div>
         </div>
 
         <div class="stat-card danger">
             <div class="icon danger"><i class="fas fa-user-slash"></i></div>
             <div class="label">Utilisateurs Bannis</div>
-            <div class="value"><?= count(array_filter($users, fn($u) => $u['is_active'] == 0)) ?></div>
+            <div class="value"><?= $banned_users ?></div>
         </div>
     </div>
 
@@ -312,7 +277,7 @@ function getUserStats($pdo, $user_id)
                 </thead>
                 <tbody>
                     <?php foreach ($users as $user): ?>
-                        <?php $stats = getUserStats($pdo, $user['id']); ?>
+                        <?php $stats = getUserStatsPOO($pdo, $user['id']); ?>
                         <tr>
                             <td class="col-id">#<?= $user['id'] ?></td>
                             <td><strong><?= htmlspecialchars($user['username']) ?></strong></td>
@@ -374,3 +339,35 @@ function getUserStats($pdo, $user_id)
     </div>
 
 </div>
+
+<?php
+/*
+================================================
+REFACTORISATION ADMIN-USERS.PHP
+
+PROBLÈME RÉSOLU :
+- Actions utilisateur (ban, unban, delete) avec SQL direct
+- Ajustement crédits avec requêtes manuelles
+- Fonction getUserStats() procédurale
+- Gestion d'erreurs dispersée
+
+SOLUTION IMPLÉMENTÉE :
+- User::ban() et User::unban() pour les actions de modération
+- User::updateCredits() pour l'ajustement sécurisé des crédits
+- User::delete() avec gestion automatique des dépendances
+- User::getTripsAsDriver() et User::getTripsAsPassenger() pour les stats
+
+ARCHITECTURE :
+- Logique métier centralisée dans la classe User
+- Gestion d'erreurs cohérente avec exceptions
+- Validation automatique des opérations
+- Code réutilisable et maintenable
+
+SÉCURITÉ :
+- Protection contre l'auto-bannissement
+- Vérification des dépendances avant suppression
+- Validation des montants de crédits
+- Transactions automatiques pour la cohérence
+================================================
+*/
+?>
