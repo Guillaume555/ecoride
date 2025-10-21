@@ -1,54 +1,25 @@
 <?php
+/*
+================================================
+FICHIER: pages/admin-trips.php - Gestion trajets administrateur
+Description: Interface d'administration des trajets avec actions POO centralisées
+================================================
+*/
 
-/**
- * ========================================
- * PAGE : pages/admin-trips.php
- * ========================================
- * 
- * DESCRIPTION :
- * Page de gestion des trajets pour l'administrateur
- * Permet de visualiser, modifier, masquer ou supprimer les trajets
- * 
- * ENTRÉES :
- * - Session admin vérifiée (via admin_guard.php)
- * - GET 'action' : cancel, hide, show, delete
- * - GET 'trip_id' : ID du trajet concerné
- * - GET 'search' : Recherche par ville
- * - GET 'filter_status' : Filtre par statut (active/completed/cancelled)
- * 
- * TRAITEMENTS :
- * 1. Récupération liste trajets avec filtres
- * 2. Gestion actions (annuler, masquer, supprimer)
- * 3. Remboursement automatique passagers lors annulation
- * 4. Calcul statistiques trajets
- * 5. Recherche et filtres dynamiques
- * 
- * SORTIES :
- * - Tableau liste trajets avec actions
- * - Messages succès/erreur après actions
- * - Statistiques et filtres
- * 
- * SÉCURITÉ :
- * - Protection admin_guard (rôle 'admin' requis)
- * - Validation ID trajet
- * - Transactions SQL pour remboursements
- * - Vérifications cohérence données
- * ========================================
- */
-
-// Définir le titre de la page
-$page_title = "Gestion Trajets - Admin EcoRide";
-
-// Protection : Seuls les admins peuvent accéder
+// Inclusion des fonctions de session et classes POO
 require_once __DIR__ . '/../includes/session.php';
 require_once __DIR__ . '/../includes/admin_guard.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../classes/Trip.php';
+
+// Protection : Seuls les admins peuvent accéder
 requireAdmin();
 
-// Connexion base de données
-require_once __DIR__ . '/../config/database.php';
+// Configuration de la page
+$page_title = "Gestion Trajets - Admin EcoRide";
 
 // ========================================
-// GESTION DES ACTIONS
+// Gestion des actions avec classes POO
 // ========================================
 
 $success_message = '';
@@ -59,87 +30,57 @@ if (isset($_GET['action']) && isset($_GET['trip_id'])) {
     $trip_id = (int)$_GET['trip_id'];
 
     try {
+        $tripObj = new Trip($pdo, $trip_id);
+
         switch ($action) {
             case 'cancel':
-                // Annuler le trajet et rembourser tous les passagers
-                $pdo->beginTransaction();
-
-                // Récupérer toutes les réservations confirmées
-                $stmt = $pdo->prepare("
-                    SELECT passenger_id, total_price 
-                    FROM bookings 
-                    WHERE trip_id = ? AND status = 'confirmed'
-                ");
-                $stmt->execute([$trip_id]);
-                $bookings = $stmt->fetchAll();
-
-                // Rembourser chaque passager
-                foreach ($bookings as $booking) {
-                    $stmt = $pdo->prepare("UPDATE users SET credits = credits + ? WHERE id = ?");
-                    $stmt->execute([$booking['total_price'], $booking['passenger_id']]);
-
-                    // Marquer la réservation comme annulée
-                    $stmt = $pdo->prepare("UPDATE bookings SET status = 'cancelled' WHERE trip_id = ? AND passenger_id = ?");
-                    $stmt->execute([$trip_id, $booking['passenger_id']]);
-                }
-
-                // Annuler le trajet
-                $stmt = $pdo->prepare("UPDATE trips SET status = 'cancelled' WHERE id = ?");
-                $stmt->execute([$trip_id]);
-
-                $pdo->commit();
-                $success_message = "Trajet annulé et " . count($bookings) . " passager(s) remboursé(s).";
+                // Annulation avec remboursement automatique via Trip::cancel()
+                $tripObj->cancel();
+                $success_message = "Trajet annulé et passagers remboursés automatiquement.";
                 break;
 
             case 'hide':
-                $stmt = $pdo->prepare("UPDATE trips SET status = 'hidden' WHERE id = ?");
-                $stmt->execute([$trip_id]);
+                $tripObj->hide();
                 $success_message = "Trajet masqué avec succès.";
                 break;
 
             case 'show':
-                $stmt = $pdo->prepare("UPDATE trips SET status = 'active' WHERE id = ?");
-                $stmt->execute([$trip_id]);
+                $tripObj->show();
                 $success_message = "Trajet réactivé avec succès.";
                 break;
 
             case 'delete':
-                // Vérifier qu'il n'y a pas de réservations confirmées
-                $stmt = $pdo->prepare("SELECT COUNT(*) FROM bookings WHERE trip_id = ? AND status = 'confirmed'");
-                $stmt->execute([$trip_id]);
-                $confirmed_bookings = $stmt->fetchColumn();
+                // Vérification via les méthodes POO avant suppression
+                $bookings = $tripObj->getBookings();
+                $confirmed_bookings = 0;
+
+                foreach ($bookings as $booking) {
+                    if ($booking['status'] === 'confirmed') {
+                        $confirmed_bookings++;
+                    }
+                }
 
                 if ($confirmed_bookings > 0) {
                     $error_message = "Impossible de supprimer : le trajet a des réservations confirmées. Annulez d'abord le trajet.";
                 } else {
-                    // Supprimer les réservations puis le trajet
-                    $pdo->beginTransaction();
-                    $pdo->prepare("DELETE FROM bookings WHERE trip_id = ?")->execute([$trip_id]);
-                    $pdo->prepare("DELETE FROM trips WHERE id = ?")->execute([$trip_id]);
-                    $pdo->commit();
+                    $tripObj->delete();
                     $success_message = "Trajet supprimé avec succès.";
                 }
                 break;
         }
-    } catch (PDOException $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
+    } catch (Exception $e) {
         $error_message = "Erreur lors de l'action : " . $e->getMessage();
     }
 }
 
 // ========================================
-// RÉCUPÉRATION FILTRES
+// Récupération des filtres et données
 // ========================================
 
 $search = $_GET['search'] ?? '';
 $filter_status = $_GET['filter_status'] ?? '';
 
-// ========================================
-// RÉCUPÉRATION LISTE TRAJETS
-// ========================================
-
+// Récupération liste trajets avec filtres
 $sql = "SELECT t.*, 
                u.username as driver_name,
                u.email as driver_email,
@@ -154,7 +95,7 @@ $sql = "SELECT t.*,
 
 $params = [];
 
-// Filtre recherche
+// Application des filtres
 if (!empty($search)) {
     $sql .= " AND (t.departure_city LIKE ? OR t.arrival_city LIKE ? OR u.username LIKE ?)";
     $params[] = "%$search%";
@@ -162,7 +103,6 @@ if (!empty($search)) {
     $params[] = "%$search%";
 }
 
-// Filtre statut
 if (!empty($filter_status)) {
     $sql .= " AND t.status = ?";
     $params[] = $filter_status;
@@ -175,18 +115,21 @@ $stmt->execute($params);
 $trips = $stmt->fetchAll();
 
 // ========================================
-// STATISTIQUES TRAJETS
+// Statistiques trajets avec sécurité
 // ========================================
 
-$stmt = $pdo->query("SELECT COUNT(*) FROM trips WHERE status = 'active'");
-$active_trips = $stmt->fetchColumn();
+try {
+    $stmt = $pdo->query("SELECT COUNT(*) FROM trips WHERE status = 'active'");
+    $active_trips = (int)$stmt->fetchColumn();
 
-$stmt = $pdo->query("SELECT COUNT(*) FROM trips WHERE status = 'completed'");
-$completed_trips = $stmt->fetchColumn();
+    $stmt = $pdo->query("SELECT COUNT(*) FROM trips WHERE status = 'completed'");
+    $completed_trips = (int)$stmt->fetchColumn();
 
-$stmt = $pdo->query("SELECT COUNT(*) FROM trips WHERE status = 'cancelled'");
-$cancelled_trips = $stmt->fetchColumn();
-
+    $stmt = $pdo->query("SELECT COUNT(*) FROM trips WHERE status = 'cancelled'");
+    $cancelled_trips = (int)$stmt->fetchColumn();
+} catch (Exception $e) {
+    $active_trips = $completed_trips = $cancelled_trips = 0;
+}
 ?>
 
 <!-- Contenu de la page -->
@@ -340,12 +283,13 @@ $cancelled_trips = $stmt->fetchColumn();
                             </td>
                             <td>
                                 <?php
-                                $status_class = [
+                                $status_classes = [
                                     'active' => 'active',
                                     'completed' => 'pending',
                                     'cancelled' => 'inactive',
                                     'hidden' => 'banned'
-                                ][$trip['status']] ?? 'inactive';
+                                ];
+                                $status_class = $status_classes[$trip['status']] ?? 'inactive';
                                 ?>
                                 <span class="status-badge <?= $status_class ?>">
                                     <?= ucfirst($trip['status']) ?>
@@ -391,3 +335,35 @@ $cancelled_trips = $stmt->fetchColumn();
     </div>
 
 </div>
+
+<?php
+/*
+================================================
+REFACTORISATION ADMIN-TRIPS.PHP
+
+PROBLÈME RÉSOLU :
+- Annulation trajet avec remboursements manuels complexes
+- Actions hide/show avec SQL direct
+- Suppression avec vérifications multiples non centralisées
+- Gestion d'erreurs dispersée
+
+SOLUTION IMPLÉMENTÉE :
+- Trip::cancel() gère automatiquement l'annulation et les remboursements
+- Trip::hide() et Trip::show() pour la gestion de visibilité
+- Trip::delete() avec vérifications intégrées
+- Trip::getBookings() pour les statistiques de réservation
+
+ARCHITECTURE :
+- Logique métier centralisée dans la classe Trip
+- Transactions automatiques pour la cohérence des données
+- Gestion d'erreurs unifiée avec exceptions
+- Code plus maintenable et réutilisable
+
+SÉCURITÉ :
+- Vérification automatique des dépendances
+- Remboursements automatiques sécurisés
+- Validation des opérations avant exécution
+- Messages d'erreur contextuels pour l'admin
+================================================
+*/
+?>
