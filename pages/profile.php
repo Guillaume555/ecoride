@@ -1,154 +1,110 @@
 <?php
 /*
 ================================================
-FICHIER: pages/profile.php - Espace utilisateur EcoRide
-Développé par: [Votre nom]
-Description: Page profil utilisateur avec gestion compte et statistiques
+FICHIER: pages/profile.php - Espace utilisateur EcoRide (VERSION POO)
+Description: Page profil utilisateur avec gestion compte et statistiques POO
 ================================================
 */
 
-// Inclusion des fonctions de session et BDD
+// Inclusion des fonctions de session et classes POO
 require_once 'includes/session.php';
 require_once 'config/database.php';
+require_once 'classes/User.php';
 
 // Vérification que l'utilisateur est connecté
 requireLogin();
 
 // Configuration de la page
 $page_title = "EcoRide - Mon Profil";
-$extra_css = ['auth.css', 'profile.css']; // Réutilise les styles d'authentification
+$extra_css = ['auth.css', 'profile.css'];
 
-// Récupération des données utilisateur
+// Récupération des données utilisateur avec POO
 $user = getCurrentUser();
+$userObj = new User($pdo, $user['id']);
 $success_message = '';
 $errors = [];
 
-// Traitement de mise à jour du profil
+// Traitement de mise à jour du profil avec POO
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 
     $username = trim($_POST['username'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
 
-    // Validation basique
-    if (empty($username)) {
-        $errors['username'] = "Le pseudo ne peut pas être vide.";
-    } elseif (strlen($username) < 3) {
-        $errors['username'] = "Le pseudo doit contenir au moins 3 caractères.";
-    }
+    try {
+        // Utilisation de User::update() avec validation automatique intégrée
+        $userObj->update($username, $email, $phone);
 
-    if (empty($email)) {
-        $errors['email'] = "L'email ne peut pas être vide.";
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors['email'] = "Format d'email invalide.";
-    }
-
-    // Vérification unicité (sauf pour l'utilisateur actuel)
-    if (empty($errors)) {
-        try {
-            // Vérifier email unique
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = :email AND id != :user_id");
-            $stmt->execute([':email' => $email, ':user_id' => $user['id']]);
-            if ($stmt->fetchColumn() > 0) {
-                $errors['email'] = "Cette adresse email est déjà utilisée.";
-            }
-
-            // Vérifier pseudo unique
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = :username AND id != :user_id");
-            $stmt->execute([':username' => $username, ':user_id' => $user['id']]);
-            if ($stmt->fetchColumn() > 0) {
-                $errors['username'] = "Ce pseudo est déjà utilisé.";
-            }
-        } catch (Exception $e) {
-            $errors['general'] = "Erreur lors de la vérification des données.";
-        }
-    }
-
-    // Mise à jour si pas d'erreurs
-    if (empty($errors)) {
-        try {
-            $stmt = $pdo->prepare("
-                UPDATE users 
-                SET username = :username, email = :email, phone = :phone 
-                WHERE id = :user_id
-            ");
-
-            $result = $stmt->execute([
-                ':username' => $username,
-                ':email' => $email,
-                ':phone' => $phone ?: null,
-                ':user_id' => $user['id']
-            ]);
-
-            if ($result) {
-                // Mettre à jour la session
-                $_SESSION['username'] = $username;
-                $_SESSION['email'] = $email;
-                $user = getCurrentUser(); // Recharger les données
-                $success_message = "Profil mis à jour avec succès !";
-            }
-        } catch (Exception $e) {
-            $errors['general'] = "Erreur lors de la mise à jour.";
-        }
+        // Recharger les données utilisateur
+        $user = getCurrentUser();
+        $success_message = "Profil mis à jour avec succès !";
+    } catch (Exception $e) {
+        $errors['general'] = $e->getMessage();
     }
 }
 
-// Récupération des statistiques utilisateur
+// Récupération des statistiques utilisateur avec POO
 try {
-    // Nombre de trajets en tant que passager
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*) as count 
-        FROM bookings b 
-        JOIN trips t ON b.trip_id = t.id 
-        WHERE b.passenger_id = :user_id AND b.status = 'confirmed'
-    ");
-    $stmt->execute([':user_id' => $user['id']]);
-    $trips_as_passenger = $stmt->fetchColumn();
+    // Statistiques avec les méthodes POO
+    $trips_as_passenger_data = $userObj->getTripsAsPassenger();
+    $trips_as_driver_data = $userObj->getTripsAsDriver();
 
-    // Nombre de trajets en tant que conducteur
-    $stmt = $pdo->prepare("
-        SELECT COUNT(*) as count 
-        FROM trips 
-        WHERE driver_id = :user_id AND status = 'completed'
-    ");
-    $stmt->execute([':user_id' => $user['id']]);
-    $trips_as_driver = $stmt->fetchColumn();
+    // Compter les trajets confirmés pour passager
+    $trips_as_passenger = 0;
+    foreach ($trips_as_passenger_data as $trip) {
+        if ($trip['status'] === 'confirmed') {
+            $trips_as_passenger++;
+        }
+    }
 
-    // Note moyenne en tant que conducteur
-    $stmt = $pdo->prepare("
-        SELECT AVG(rating) as avg_rating, COUNT(*) as review_count 
-        FROM reviews 
-        WHERE reviewed_id = :user_id AND is_validated = 1
-    ");
-    $stmt->execute([':user_id' => $user['id']]);
-    $rating_data = $stmt->fetch();
-    $average_rating = $rating_data['avg_rating'] ? round($rating_data['avg_rating'], 1) : null;
-    $review_count = $rating_data['review_count'];
+    // Compter les trajets terminés pour conducteur
+    $trips_as_driver = 0;
+    foreach ($trips_as_driver_data as $trip) {
+        if ($trip['status'] === 'completed') {
+            $trips_as_driver++;
+        }
+    }
 
-    // Historique des transactions (simulation)
-    $stmt = $pdo->prepare("
-        SELECT 'Réservation trajet' as type, -b.total_price as amount, b.booking_date as date,
-               CONCAT(t.departure_city, ' → ', t.arrival_city) as description
-        FROM bookings b
-        JOIN trips t ON b.trip_id = t.id
-        WHERE b.passenger_id = :user_id AND b.status = 'confirmed'
-        ORDER BY b.booking_date DESC
-        LIMIT 5
-    ");
-    $stmt->execute([':user_id' => $user['id']]);
-    $transactions = $stmt->fetchAll();
+    // Note moyenne avec POO
+    $average_rating = $userObj->getAverageRating();
+
+    // Compter les avis pour affichage
+    $review_count = 0;
+    if ($average_rating > 0) {
+        try {
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM reviews 
+                WHERE reviewed_id = ? AND is_validated = 1
+            ");
+            $stmt->execute([$user['id']]);
+            $review_count = $stmt->fetchColumn();
+        } catch (Exception $e) {
+            $review_count = 0;
+        }
+    }
+
+    // Historique des transactions (utilise les données passager POO)
+    $transactions = [];
+    foreach (array_slice($trips_as_passenger_data, 0, 5) as $trip) {
+        if ($trip['status'] === 'confirmed') {
+            $transactions[] = [
+                'type' => 'Réservation trajet',
+                'amount' => -$trip['total_price'],
+                'date' => $trip['departure_time'], // ou booking_date si disponible
+                'description' => $trip['departure_city'] . ' → ' . $trip['arrival_city']
+            ];
+        }
+    }
 } catch (Exception $e) {
     $trips_as_passenger = 0;
     $trips_as_driver = 0;
-    $average_rating = null;
+    $average_rating = 0;
     $review_count = 0;
     $transactions = [];
 }
 
-// Récupération des données utilisateur actuelles pour le formulaire
-$stmt = $pdo->prepare("SELECT username, email, phone FROM users WHERE id = :user_id");
-$stmt->execute([':user_id' => $user['id']]);
-$user_profile = $stmt->fetch();
+// Récupération des données utilisateur actuelles avec POO
+$user_profile = $userObj->getData();
 ?>
 
 <!-- PAGE PROFIL UTILISATEUR -->
@@ -402,8 +358,30 @@ $user_profile = $stmt->fetch();
                     <div class="member-info mt-4 p-3 bg-light rounded">
                         <h6><i class="fas fa-calendar"></i> Membre depuis</h6>
                         <p class="mb-0 text-muted">
-                            <?= date('F Y', strtotime($user['login_time'] ?? 'now')) ?>
+                            <?= date('F Y', strtotime($user_profile['created_at'] ?? 'now')) ?>
                         </p>
+                    </div>
+                </div>
+
+                <!-- Statistiques détaillées -->
+                <div class="auth-card mt-4">
+                    <h6 class="text-secondary mb-3">
+                        <i class="fas fa-chart-line"></i> Mes statistiques
+                    </h6>
+
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fw-bold text-success"><?= count($trips_as_driver_data) ?></div>
+                            <small class="text-muted">Trajets créés</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold text-primary"><?= count($trips_as_passenger_data) ?></div>
+                            <small class="text-muted">Réservations</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold text-warning"><?= $user['credits'] ?></div>
+                            <small class="text-muted">Crédits</small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -415,36 +393,27 @@ $user_profile = $stmt->fetch();
 <?php
 /*
 ================================================
-NOTES DE DÉVELOPPEMENT:
+AMÉLIORATIONS APPORTÉES PAR LA REFACTORISATION POO
 
-1. FONCTIONNALITÉS IMPLÉMENTÉES:
-   ✅ Affichage informations utilisateur complètes
-   ✅ Statistiques personnelles (trajets, note moyenne)
-   ✅ Modification profil avec validation
-   ✅ Historique des transactions
-   ✅ Actions rapides (sidebar)
-   ✅ Design responsive et cohérent
+AVANT (PROCÉDURAL) :
+- Validation manuelle + UPDATE SQL direct pour mise à jour profil
+- Requêtes SQL directes pour statistiques utilisateur
+- Requête SQL directe pour note moyenne
+- Requête SQL directe pour récupération données profil
 
-2. SÉCURITÉ:
-   ✅ Vérification connexion (requireLogin)
-   ✅ Validation des modifications
-   ✅ Requêtes préparées
-   ✅ Échappement des données
+APRÈS (POO) :
+- User::update() avec validation automatique intégrée
+- User::getTripsAsPassenger() et User::getTripsAsDriver() pour statistiques
+- User::getAverageRating() pour la note moyenne
+- User::getData() pour récupération propre des données
 
-3. UX/UI:
-   ✅ Interface intuitive et claire
-   ✅ Statistiques visuelles
-   ✅ Messages de feedback
-   ✅ Actions rapides accessibles
-   ✅ Design cohérent avec le reste du site
-
-4. INTÉGRATION:
-   ✅ Compatible avec système d'authentification
-   ✅ Liens vers autres pages (my-trips, search)
-   ✅ Utilise auth.css existant
-   ✅ Responsive design
-
-PROCHAINE ÉTAPE: Créer pages/my-trips.php pour la gestion des trajets
+BÉNÉFICES :
+- Validation automatique avec messages d'erreur contextuels
+- Gestion d'erreurs centralisée avec exceptions
+- Code plus maintenable et réutilisable
+- Logique métier séparée de la présentation
+- Synchronisation automatique de la session
+- Architecture cohérente avec le reste de l'application
 ================================================
 */
 ?>
