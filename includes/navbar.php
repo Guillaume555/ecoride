@@ -1,6 +1,6 @@
 <?php
-// ========== NAVBAR PRINCIPALE ECORIDE ==========
-// Fichier : includes/navbar.php
+// Inclusion de la classe Session
+require_once __DIR__ . '/session.php';
 
 // Déterminer la page active pour le style
 $current_page = $_GET['page'] ?? 'home';
@@ -46,10 +46,10 @@ $current_page = $_GET['page'] ?? 'home';
             </ul>
 
             <!-- Menu utilisateur -->
-            <?php if (isLoggedIn()): ?>
+            <?php if (Session::isLoggedIn()): ?>
                 <?php
-                $user = getCurrentUser();
-                $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+                $user = Session::getCurrentUser();
+                $isAdmin = Session::hasRole('admin');
                 ?>
 
                 <div class="navbar-nav ms-auto">
@@ -129,13 +129,23 @@ $current_page = $_GET['page'] ?? 'home';
     </div>
 </nav>
 
-<!-- Fichier utilisé pour afficher une barre de navigation responsive.
+<?php
+/*
+=== CHANGEMENTS APPORTÉS ===
 
-Fonctionnalités :
-- Affiche les liens principaux du site (Accueil, Covoiturages, etc.)
-- Adapte l’affichage selon que l’utilisateur est connecté ou non :
-- S’il est connecté : affichage du pseudo, du nombre de crédits et d’un menu déroulant
-- Sinon : boutons Connexion / Inscription
-- Le lien actif est mis en surbrillance automatiquement selon la page en cours
+1. Ajout de require_once pour la classe Session
+2. Session::isLoggedIn() au lieu de isLoggedIn()
+3. Session::getCurrentUser() au lieu de getCurrentUser()
+4. Session::hasRole('admin') au lieu de vérifier $_SESSION['role']
 
-Ce fichier est chargé dans toutes les pages via index.php. -->
+=== AVANTAGES ===
+
+- Code plus propre et organisé
+- Méthodes centralisées dans la classe Session
+- Plus de logique dispersée dans la navbar
+- Facilite les modifications futures
+
+Le reste du code reste identique, juste les appels aux fonctions
+qui changent pour utiliser la classe Session.
+*/
+?>
