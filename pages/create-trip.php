@@ -282,17 +282,22 @@ $popularCities = [
                                 <label for="vehicle_id" class="form-label">
                                     <i class="fas fa-car text-secondary"></i> Véhicule *
                                 </label>
-                                <select class="form-select" id="vehicle_id" name="vehicle_id" required>
-                                    <option value="">Sélectionnez votre véhicule</option>
-                                    <?php foreach ($userVehicles as $vehicle): ?>
-                                        <option value="<?= $vehicle['id'] ?>"
-                                            data-seats="<?= $vehicle['seats'] ?>"
-                                            <?= (($formData['vehicle_id'] ?? 0) == $vehicle['id']) ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($vehicle['brand'] . ' ' . $vehicle['model']) ?>
-                                            (<?= htmlspecialchars($vehicle['color']) ?> - <?= $vehicle['seats'] ?> places - <?= ucfirst($vehicle['fuel_type']) ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <div class="d-flex gap-2">
+                                    <select class="form-select" id="vehicle_id" name="vehicle_id" required>
+                                        <option value="">Sélectionnez votre véhicule</option>
+                                        <?php foreach ($userVehicles as $vehicle): ?>
+                                            <option value="<?= $vehicle['id'] ?>"
+                                                data-seats="<?= $vehicle['seats'] ?>"
+                                                <?= (($formData['vehicle_id'] ?? 0) == $vehicle['id']) ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($vehicle['brand'] . ' ' . $vehicle['model']) ?>
+                                                (<?= htmlspecialchars($vehicle['color']) ?> - <?= $vehicle['seats'] ?> places - <?= ucfirst($vehicle['fuel_type']) ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <a href="?page=add-vehicle" class="btn btn-outline-success flex-shrink-0">
+                                        <i class="fas fa-plus"></i> Nouveau
+                                    </a>
+                                </div>
                                 <div class="form-text">
                                     <i class="fas fa-info-circle"></i>
                                     Le nombre de places disponibles sera automatiquement limité selon votre véhicule
