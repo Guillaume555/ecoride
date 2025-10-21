@@ -1,18 +1,22 @@
 <?php
+/*
+================================================
+FICHIER: pages/create-trip.php - Page de création de trajets (VERSION POO)
+Description: Permet aux conducteurs de proposer leurs trajets avec architecture POO
+================================================
+*/
 
-/**
- * EcoRide - Page de création de trajets
- * Permet aux conducteurs de proposer leurs trajets
- */
-
-require_once 'config/database.php';
+// Inclusion des fonctions de session et classes POO
 require_once 'includes/session.php';
-require_once 'config/mongodb.php';
+require_once 'config/database.php';
+require_once 'classes/Trip.php';
+require_once 'classes/Vehicle.php';
+require_once 'classes/User.php';
 
+// Configuration de la page
 $page_title = "Créer un trajet - EcoRide";
-$extra_css = ['create-trip.css']; // CSS spécifique à cette page
-$extra_js = ['create-trip.js']; //Js spécifique a la page
-
+$extra_css = ['create-trip.css'];
+$extra_js = ['create-trip.js'];
 
 // Vérification connexion utilisateur
 requireLogin();
@@ -23,18 +27,12 @@ $errors = [];
 $success = '';
 $formData = [];
 
-// Récupération des véhicules de l'utilisateur
+// Récupération des véhicules de l'utilisateur avec POO
 try {
-    $stmt = $pdo->prepare("
-        SELECT id, brand, model, color, license_plate, seats, fuel_type, year 
-        FROM vehicles 
-        WHERE user_id = ? 
-        ORDER BY created_at DESC
-    ");
-    $stmt->execute([$user['id']]);
-    $userVehicles = $stmt->fetchAll();
-} catch (PDOException $e) {
+    $userVehicles = Vehicle::getByUser($pdo, $user['id']);
+} catch (Exception $e) {
     $errors[] = "Erreur lors de la récupération des véhicules.";
+    $userVehicles = [];
 }
 
 // Traitement du formulaire
@@ -52,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_trip'])) {
         'preferences' => trim($_POST['preferences'] ?? '')
     ];
 
-    // Validation des données
+    // Validation des données de base
     if (empty($formData['departure_city'])) {
         $errors[] = "La ville de départ est obligatoire.";
     }
@@ -78,15 +76,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_trip'])) {
     if ($formData['vehicle_id'] <= 0) {
         $errors[] = "Veuillez sélectionner un véhicule.";
     } else {
-        // Vérifier que le véhicule appartient bien à l'utilisateur
-        $stmt = $pdo->prepare("SELECT id, seats FROM vehicles WHERE id = ? AND user_id = ?");
-        $stmt->execute([$formData['vehicle_id'], $user['id']]);
-        $vehicle = $stmt->fetch();
+        // Vérification propriété véhicule avec POO
+        try {
+            if (!Vehicle::checkOwnership($pdo, $user['id'], $formData['vehicle_id'])) {
+                $errors[] = "Véhicule non trouvé ou non autorisé.";
+            } else {
+                // Charger le véhicule pour vérifier les places
+                $vehicle = new Vehicle($pdo, $formData['vehicle_id']);
+                $vehicleData = $vehicle->getData();
 
-        if (!$vehicle) {
-            $errors[] = "Véhicule non trouvé ou non autorisé.";
-        } elseif ($formData['available_seats'] > ($vehicle['seats'] - 1)) {
-            $errors[] = "Nombre de places disponibles invalide (maximum " . ($vehicle['seats'] - 1) . " places).";
+                if ($formData['available_seats'] > ($vehicleData['seats'] - 1)) {
+                    $errors[] = "Nombre de places disponibles invalide (maximum " . ($vehicleData['seats'] - 1) . " places).";
+                }
+            }
+        } catch (Exception $e) {
+            $errors[] = "Erreur lors de la validation du véhicule.";
         }
     }
 
@@ -98,42 +102,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_trip'])) {
         $errors[] = "Le prix par place doit être entre 0€ et 100€.";
     }
 
-    // Si pas d'erreurs, créer le trajet
+    // Si pas d'erreurs, créer le trajet avec POO
     if (empty($errors)) {
         try {
-            // Formatage datetime
+            // Formatage datetime pour Trip::create()
             $departureDateTime = $formData['departure_date'] . ' ' . $formData['departure_time'];
 
-            $stmt = $pdo->prepare("
-                INSERT INTO trips (
-                    driver_id, vehicle_id, departure_city, arrival_city, 
-                    departure_time, available_seats, price_per_seat, 
-                    preferences, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
-            ");
-
-            $stmt->execute([
-                $user['id'],
-                $formData['vehicle_id'],
-                $formData['departure_city'],
-                $formData['arrival_city'],
-                $departureDateTime,
-                $formData['available_seats'],
-                $formData['price_per_seat'],
-                $formData['preferences']
-            ]);
-
-            $tripId = $pdo->lastInsertId();
-
-            // Log MongoDB de la création
-            logUserActivity($user['id'], 'create_trip', [
-                'trip_id' => $tripId,
+            // Préparation des données pour Trip::create()
+            $tripData = [
                 'departure_city' => $formData['departure_city'],
                 'arrival_city' => $formData['arrival_city'],
                 'departure_time' => $departureDateTime,
-                'seats' => $formData['available_seats'],
-                'price' => $formData['price_per_seat']
-            ]);
+                'available_seats' => $formData['available_seats'],
+                'price_per_seat' => $formData['price_per_seat'],
+                'preferences' => $formData['preferences']
+            ];
+
+            // Création du trajet avec POO
+            $trip = new Trip($pdo);
+            $tripId = $trip->create($user['id'], $formData['vehicle_id'], $tripData);
 
             $success = "Votre trajet a été créé avec succès ! Il sera visible par les autres utilisateurs.";
 
@@ -146,9 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_trip'])) {
                     window.location.href = '?page=my-trips';
                 }, 3000);
             </script>";
-        } catch (PDOException $e) {
-            $errors[] = "Erreur lors de la création du trajet. Veuillez réessayer.";
-            error_log("Create trip error: " . $e->getMessage());
+        } catch (Exception $e) {
+            $errors[] = $e->getMessage();
         }
     }
 }
@@ -453,48 +439,48 @@ $popularCities = [
                     </div>
                 </div>
 
-                <!-- Statistiques rapides -->
+                <!-- Statistiques rapides avec POO -->
                 <div class="auth-card mt-4">
                     <h6 class="text-secondary mb-3">
                         <i class="fas fa-chart-line"></i> Vos trajets
                     </h6>
 
-                    <!-- REMPLACER LA SECTION STATISTIQUES DANS create-trip.php PAR : -->
-
                     <?php
-                    // Statistiques rapides de l'utilisateur (AVEC PROTECTION NULL)
+                    // Statistiques rapides de l'utilisateur avec POO
                     try {
-                        $stmt = $pdo->prepare("
-                            SELECT 
-                                COUNT(*) as total_trips,
-                                SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_trips,
-                                AVG(price_per_seat) as avg_price
-                            FROM trips 
-                            WHERE driver_id = ?
-                        ");
-                        $stmt->execute([$user['id']]);
-                        $stats = $stmt->fetch();
+                        $userObj = new User($pdo, $user['id']);
+                        $userTrips = $userObj->getTripsAsDriver();
 
-                        // Protection contre les valeurs NULL
-                        $stats['total_trips'] = (int)($stats['total_trips'] ?? 0);
-                        $stats['active_trips'] = (int)($stats['active_trips'] ?? 0);
-                        $stats['avg_price'] = (float)($stats['avg_price'] ?? 0);
-                    } catch (PDOException $e) {
-                        $stats = ['total_trips' => 0, 'active_trips' => 0, 'avg_price' => 0];
+                        $totalTrips = count($userTrips);
+                        $activeTrips = 0;
+                        $totalPrice = 0;
+
+                        foreach ($userTrips as $trip) {
+                            if ($trip['status'] === 'active') {
+                                $activeTrips++;
+                            }
+                            $totalPrice += $trip['price_per_seat'];
+                        }
+
+                        $avgPrice = $totalTrips > 0 ? $totalPrice / $totalTrips : 0;
+                    } catch (Exception $e) {
+                        $totalTrips = 0;
+                        $activeTrips = 0;
+                        $avgPrice = 0;
                     }
                     ?>
 
                     <div class="row text-center">
                         <div class="col-4">
-                            <div class="fw-bold text-success"><?= $stats['total_trips'] ?></div>
+                            <div class="fw-bold text-success"><?= $totalTrips ?></div>
                             <small class="text-muted">Total</small>
                         </div>
                         <div class="col-4">
-                            <div class="fw-bold text-primary"><?= $stats['active_trips'] ?></div>
+                            <div class="fw-bold text-primary"><?= $activeTrips ?></div>
                             <small class="text-muted">Actifs</small>
                         </div>
                         <div class="col-4">
-                            <div class="fw-bold text-warning"><?= $stats['avg_price'] > 0 ? number_format($stats['avg_price'], 1) : '0.0' ?>€</div>
+                            <div class="fw-bold text-warning"><?= $avgPrice > 0 ? number_format($avgPrice, 1) : '0.0' ?>€</div>
                             <small class="text-muted">Prix moy.</small>
                         </div>
                     </div>
@@ -511,3 +497,30 @@ $popularCities = [
         <option value="<?= htmlspecialchars($city) ?>">
         <?php endforeach; ?>
 </datalist>
+
+<?php
+/*
+================================================
+AMÉLIORATIONS APPORTÉES PAR LA REFACTORISATION POO
+
+AVANT (PROCÉDURAL) :
+- Requête SQL directe pour récupérer les véhicules
+- Validation manuelle de la propriété du véhicule  
+- Insertion SQL directe avec formatage manuel
+- Statistiques avec requête SQL complexe
+
+APRÈS (POO) :
+- Vehicle::getByUser() pour récupérer les véhicules
+- Vehicle::checkOwnership() pour valider la propriété
+- Trip::create() avec validation intégrée et transactions automatiques
+- User::getTripsAsDriver() pour les statistiques
+
+BÉNÉFICES :
+- Code plus maintenable et réutilisable
+- Gestion d'erreurs centralisée avec exceptions claires
+- Validation automatique dans les classes
+- Transactions SQL automatiques pour la cohérence
+- Séparation claire entre logique métier et présentation
+================================================
+*/
+?>
