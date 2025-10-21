@@ -1,51 +1,141 @@
 <?php
+/*
+================================================
+FICHIER: pages/admin-reviews.php - Modération des avis administrateur
+Description: Interface de validation et gestion des avis utilisateurs avec POO
+================================================
+*/
 
-/**
- * ========================================
- * PAGE : pages/admin-reviews.php
- * ========================================
- * 
- * DESCRIPTION :
- * Page de modération des avis pour l'administrateur
- * Permet de valider, refuser ou supprimer les avis utilisateurs
- * 
- * ENTRÉES :
- * - Session admin vérifiée (via admin_guard.php)
- * - GET 'action' : validate, reject, delete
- * - GET 'review_id' : ID de l'avis concerné
- * - GET 'filter_status' : Filtre par statut de validation
- * 
- * TRAITEMENTS :
- * 1. Récupération liste avis avec filtres
- * 2. Gestion actions (valider, refuser, supprimer)
- * 3. Calcul statistiques avis
- * 4. Filtres dynamiques par statut
- * 
- * SORTIES :
- * - Tableau liste avis avec actions
- * - Messages succès/erreur après actions
- * - Statistiques modération
- * 
- * SÉCURITÉ :
- * - Protection admin_guard (rôle 'admin' requis)
- * - Validation ID avis
- * - Vérifications cohérence données
- * ========================================
- */
-
-// Définir le titre de la page
-$page_title = "Modération Avis - Admin EcoRide";
-
-// Protection : Seuls les admins peuvent accéder
+// Inclusion des fonctions de session et classes POO
 require_once __DIR__ . '/../includes/session.php';
 require_once __DIR__ . '/../includes/admin_guard.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../classes/Admin.php';
+
+// Protection : Seuls les admins peuvent accéder
 requireAdmin();
 
-// Connexion base de données
-require_once __DIR__ . '/../config/database.php';
+// Configuration de la page
+$page_title = "Modération Avis - Admin EcoRide";
 
 // ========================================
-// GESTION DES ACTIONS
+// Classe Review pour les actions spécifiques aux avis
+// ========================================
+
+class Review
+{
+    private $pdo;
+    private $id;
+    private $data;
+
+    public function __construct($pdo, $id = null)
+    {
+        $this->pdo = $pdo;
+        $this->id = $id;
+        if ($id !== null) {
+            $this->loadById($id);
+        }
+    }
+
+    public function loadById($id)
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM reviews WHERE id = ?");
+        $stmt->execute([$id]);
+        $review = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$review) {
+            throw new Exception("Avis introuvable.");
+        }
+
+        $this->id = $id;
+        $this->data = $review;
+        return $this->data;
+    }
+
+    public function validate()
+    {
+        if (!$this->id) {
+            throw new Exception("Aucun avis chargé.");
+        }
+
+        $stmt = $this->pdo->prepare("UPDATE reviews SET is_validated = 1 WHERE id = ?");
+        return $stmt->execute([$this->id]);
+    }
+
+    public function reject()
+    {
+        if (!$this->id) {
+            throw new Exception("Aucun avis chargé.");
+        }
+
+        $stmt = $this->pdo->prepare("UPDATE reviews SET is_validated = 0 WHERE id = ?");
+        return $stmt->execute([$this->id]);
+    }
+
+    public function delete()
+    {
+        if (!$this->id) {
+            throw new Exception("Aucun avis chargé.");
+        }
+
+        $stmt = $this->pdo->prepare("DELETE FROM reviews WHERE id = ?");
+        return $stmt->execute([$this->id]);
+    }
+
+    public static function getStats($pdo)
+    {
+        $stats = [];
+
+        try {
+            $stmt = $pdo->query("SELECT COUNT(*) FROM reviews WHERE is_validated = 1");
+            $stats['validated'] = (int)$stmt->fetchColumn();
+
+            $stmt = $pdo->query("SELECT COUNT(*) FROM reviews WHERE is_validated = 0");
+            $stats['pending'] = (int)$stmt->fetchColumn();
+
+            $stmt = $pdo->query("SELECT AVG(rating) FROM reviews WHERE is_validated = 1");
+            $avg = $stmt->fetchColumn();
+            $stats['average_rating'] = $avg ? round($avg, 1) : 0;
+        } catch (Exception $e) {
+            $stats = ['validated' => 0, 'pending' => 0, 'average_rating' => 0];
+        }
+
+        return $stats;
+    }
+
+    public static function getAll($pdo, $filter_status = '')
+    {
+        $sql = "SELECT r.*, 
+                       reviewer.username as reviewer_name,
+                       reviewer.email as reviewer_email,
+                       reviewed.username as reviewed_name,
+                       t.departure_city,
+                       t.arrival_city,
+                       t.departure_time
+                FROM reviews r
+                JOIN users reviewer ON r.reviewer_id = reviewer.id
+                JOIN users reviewed ON r.reviewed_id = reviewed.id
+                JOIN trips t ON r.trip_id = t.id
+                WHERE 1=1";
+
+        $params = [];
+
+        if ($filter_status === 'validated') {
+            $sql .= " AND r.is_validated = 1";
+        } elseif ($filter_status === 'pending') {
+            $sql .= " AND r.is_validated = 0";
+        }
+
+        $sql .= " ORDER BY r.created_at DESC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
+// ========================================
+// Gestion des actions avec POO
 // ========================================
 
 $success_message = '';
@@ -56,81 +146,43 @@ if (isset($_GET['action']) && isset($_GET['review_id'])) {
     $review_id = (int)$_GET['review_id'];
 
     try {
+        $reviewObj = new Review($pdo, $review_id);
+
         switch ($action) {
             case 'validate':
-                $stmt = $pdo->prepare("UPDATE reviews SET is_validated = 1 WHERE id = ?");
-                $stmt->execute([$review_id]);
+                $reviewObj->validate();
                 $success_message = "Avis validé avec succès.";
                 break;
 
             case 'reject':
-                $stmt = $pdo->prepare("UPDATE reviews SET is_validated = 0 WHERE id = ?");
-                $stmt->execute([$review_id]);
+                $reviewObj->reject();
                 $success_message = "Avis refusé.";
                 break;
 
             case 'delete':
-                $stmt = $pdo->prepare("DELETE FROM reviews WHERE id = ?");
-                $stmt->execute([$review_id]);
+                $reviewObj->delete();
                 $success_message = "Avis supprimé définitivement.";
                 break;
         }
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         $error_message = "Erreur lors de l'action : " . $e->getMessage();
     }
 }
 
 // ========================================
-// RÉCUPÉRATION FILTRES
+// Récupération des données avec POO
 // ========================================
 
 $filter_status = $_GET['filter_status'] ?? '';
 
-// ========================================
-// RÉCUPÉRATION LISTE AVIS
-// ========================================
+// Récupération des statistiques via POO
+$reviewStats = Review::getStats($pdo);
+$validated_reviews = $reviewStats['validated'];
+$pending_reviews = $reviewStats['pending'];
+$average_rating = $reviewStats['average_rating'];
 
-$sql = "SELECT r.*, 
-               reviewer.username as reviewer_name,
-               reviewer.email as reviewer_email,
-               reviewed.username as reviewed_name,
-               t.departure_city,
-               t.arrival_city,
-               t.departure_time
-        FROM reviews r
-        JOIN users reviewer ON r.reviewer_id = reviewer.id
-        JOIN users reviewed ON r.reviewed_id = reviewed.id
-        JOIN trips t ON r.trip_id = t.id
-        WHERE 1=1";
-
-$params = [];
-
-// Filtre statut validation
-if ($filter_status === 'validated') {
-    $sql .= " AND r.is_validated = 1";
-} elseif ($filter_status === 'pending') {
-    $sql .= " AND r.is_validated = 0";
-}
-
-$sql .= " ORDER BY r.created_at DESC";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$reviews = $stmt->fetchAll();
-
-// ========================================
-// STATISTIQUES AVIS
-// ========================================
-
-$stmt = $pdo->query("SELECT COUNT(*) FROM reviews WHERE is_validated = 1");
-$validated_reviews = $stmt->fetchColumn();
-
-$stmt = $pdo->query("SELECT COUNT(*) FROM reviews WHERE is_validated = 0");
-$pending_reviews = $stmt->fetchColumn();
-
-$stmt = $pdo->query("SELECT AVG(rating) FROM reviews WHERE is_validated = 1");
-$average_rating = round($stmt->fetchColumn() ?? 0, 1);
-
+// Récupération de la liste des avis via POO
+$reviews = Review::getAll($pdo, $filter_status);
 ?>
 
 <!-- Contenu de la page -->
@@ -308,3 +360,33 @@ $average_rating = round($stmt->fetchColumn() ?? 0, 1);
     </div>
 
 </div>
+
+<?php
+/*
+================================================
+REFACTORISATION ADMIN-REVIEWS.PHP
+
+PROBLÈME RÉSOLU :
+- Actions de validation/rejet avec SQL direct
+- Statistiques avis avec requêtes manuelles répétées
+- Récupération liste avis avec JOIN complexe non centralisé
+- Logique métier dispersée dans la page
+
+SOLUTION IMPLÉMENTÉE :
+- Classe Review avec méthodes validate(), reject(), delete()
+- Review::getStats() pour centraliser les statistiques
+- Review::getAll() avec filtres intégrés
+- Architecture POO cohérente avec les autres pages admin
+
+ARCHITECTURE :
+- Logique métier encapsulée dans la classe Review
+- Méthodes statiques pour les opérations globales
+- Gestion d'erreurs unifiée avec exceptions
+- Code réutilisable et maintenable
+
+FINALISATION :
+Cette page termine la refactorisation POO de l'interface admin.
+Toutes les pages critiques utilisent maintenant une architecture POO cohérente.
+================================================
+*/
+?>
