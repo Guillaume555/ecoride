@@ -3,11 +3,8 @@
 
 session_start();
 
-// Vérifie si l'utilisateur a choisi l'option 'Se souvenir de moi' et tente une reconnexion automatique
-if (file_exists('includes/session.php')) {
-    require_once 'includes/session.php';
-    checkRememberMeLogin();
-}
+// Inclusion de la classe Session (le checkRememberMe se fait automatiquement)
+require_once 'includes/session.php';
 
 // On récupère le nom de la page à afficher via l'URL, ou on redirige vers l'accueil si non valide
 $page = $_GET['page'] ?? 'home';
@@ -41,8 +38,7 @@ if (!in_array($page, $allowed_pages)) {
 
 // Cas particulier : si la page demandée est 'logout', on déconnecte l'utilisateur
 if ($page === 'logout') {
-    require_once 'includes/session.php';
-    logoutUser();
+    Session::logout();
     header('Location: ?page=home');
     exit;
 }

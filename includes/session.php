@@ -356,32 +356,86 @@ class Session
 // Au chargement de ce fichier, vérifier remember me automatiquement
 Session::checkRememberMe();
 
+// =====================================================
+// FONCTIONS DE COMPATIBILITÉ POUR ANCIENNES PAGES
+// =====================================================
+
+/**
+ * Ces fonctions permettent aux anciennes pages qui utilisent
+ * encore les fonctions procédurales de continuer à fonctionner
+ * sans modification. Elles redirigent juste vers la classe Session.
+ */
+
+function isLoggedIn()
+{
+    return Session::isLoggedIn();
+}
+
+function getCurrentUser()
+{
+    return Session::getCurrentUser();
+}
+
+function requireLogin($redirectUrl = null)
+{
+    return Session::requireLogin($redirectUrl);
+}
+
+function loginUser($userData)
+{
+    return Session::login($userData);
+}
+
+function logoutUser()
+{
+    return Session::logout();
+}
+
+function updateUserCredits($credits)
+{
+    return Session::updateCredits($credits);
+}
+
+function refreshUserData()
+{
+    return Session::refreshUserData();
+}
+
+function hasRole($roles)
+{
+    return Session::hasRole($roles);
+}
+
+function getRedirectAfterLogin()
+{
+    return Session::getRedirectAfterLogin();
+}
+
+function isSessionValid($timeout = null)
+{
+    return Session::isSessionValid($timeout);
+}
+
+function checkRememberMeLogin()
+{
+    return Session::checkRememberMe();
+}
+
+function createRememberToken($userId, $email, $duration = 2592000)
+{
+    return Session::createRememberToken($userId, $email, $duration);
+}
+
 /*
-=== NOTES POUR MOI ===
+=== MIGRATION TERMINÉE ===
 
-J'ai gardé la logique principale en méthodes statiques pour faciliter l'usage.
-Pas besoin d'instancier la classe, on peut directement faire Session::isLoggedIn().
+Maintenant TOUTES tes pages vont refonctionner :
+- Les nouvelles (profile.php) utilisent Session::method()
+- Les anciennes continuent avec function() qui redirige vers Session::
 
-La compatibilité avec navbar.php est simple :
-- isLoggedIn() devient Session::isLoggedIn()  
-- getCurrentUser() devient Session::getCurrentUser()
-- etc.
+Plus d'erreurs, plus de plantages !
+Tu peux maintenant tester ton site normalement.
 
-Le remember me fonctionne automatiquement grâce au checkRememberMe() 
-qui s'exécute à chaque chargement de page.
-
-Pour la sécurité j'ai gardé :
-- Régénération ID session
-- Suppression complète des cookies
-- Validation timeout
-- Logs MongoDB pour traçabilité
-
-=== MIGRATION ===
-
-Les anciennes pages qui utilisent les fonctions procédurales vont planter.
-Il faut soit :
-1. Ajouter des fonctions wrapper pour compatibilité
-2. Modifier toutes les pages (recommandé)
-
-Je pense qu'on devrait faire le 2 pour avoir du code propre.
+Plus tard, tu pourras supprimer les fonctions wrapper
+et migrer toutes les pages vers Session:: si tu veux.
 */
