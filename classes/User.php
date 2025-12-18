@@ -368,10 +368,8 @@ class User
             // Recharger pour obtenir le nouveau solde
             $this->loadById($this->id);
 
-            // Synchroniser la session
-            if (isLoggedIn() && $_SESSION['user_id'] == $this->id) {
-                updateUserCredits($this->data['credits']);
-            }
+            // on ne synchronise pas la session immédiatement si on est dans une transaction
+            // La synchronisation se fera après le commit dans la méthode appelante
 
             $this->logAction('add_credits', "Ajout de $amount crédits");
 
@@ -413,11 +411,10 @@ class User
 
             // Recharger
             $this->loadById($this->id);
+            
+            // NE PAS synchroniser la session immédiatement si on est dans une transaction
+            // La synchronisation se fera après le commit dans la méthode appelante
 
-            // Synchroniser la session
-            if (isLoggedIn() && $_SESSION['user_id'] == $this->id) {
-                updateUserCredits($this->data['credits']);
-            }
 
             $this->logAction('remove_credits', "Retrait de $amount crédits");
 

@@ -231,9 +231,9 @@ class Trip
     {
         $stmt = $this->pdo->prepare("
             SELECT t.*,
-                   u.username as driver_name,
-                   u.phone as driver_phone,
-                   v.brand, v.model, v.color, v.fuel_type, v.license_plate
+                u.username as driver_name,
+                u.phone as driver_phone,
+                v.brand, v.model, v.color, v.fuel_type, v.license_plate, v.year
             FROM trips t
             JOIN users u ON t.driver_id = u.id
             LEFT JOIN vehicles v ON t.vehicle_id = v.id
@@ -403,12 +403,12 @@ class Trip
             $driver = new User($this->pdo, $this->data['driver_id']);
             $driver->addCredits($totalPrice);
 
-            // 3. Créer la réservation dans la table bookings
+           // 3. Créer la réservation dans la table bookings
             $stmt = $this->pdo->prepare("
                 INSERT INTO bookings (
-                    trip_id, passenger_id, seats_booked, total_price, status, created_at
+                    trip_id, passenger_id, seats_booked, total_price, status
                 ) VALUES (
-                    ?, ?, ?, ?, 'confirmed', NOW()
+                    ?, ?, ?, ?, 'confirmed'
                 )
             ");
 
@@ -432,6 +432,12 @@ class Trip
 
             // Si tout s'est bien passé, valider la transaction
             $this->pdo->commit();
+            
+            // AJOUTE CECI : Synchroniser la session maintenant que la transaction est validée
+            if (isLoggedIn() && $_SESSION['user_id'] == $passengerId) {
+                $passenger->loadById($passengerId);  // Recharger les données
+                updateUserCredits($passenger->get('credits'));  // Mettre à jour la session
+            }
 
             // Recharger les données du trajet
             $this->loadById($this->id);
