@@ -2,7 +2,7 @@
 /*
 ================================================
 FICHIER: pages/register.php - Page d'inscription EcoRide (VERSION POO)
-Description: Formulaire d'inscription avec validation sécurisée
+Description: Formulaire d'inscription avec validation sécurisée complète
 ================================================
 */
 
@@ -70,17 +70,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error_message = $e->getMessage();
 
             // Dispatcher les erreurs selon le contenu du message
-            if (strpos($error_message, 'email') !== false && strpos($error_message, 'existe') !== false) {
-                $errors['email'] = $error_message;
-            } elseif (strpos($error_message, 'email') !== false) {
-                $errors['email'] = $error_message;
-            } elseif (strpos($error_message, 'utilisateur') !== false && strpos($error_message, 'caractères') !== false) {
+            // Erreurs liées à l'email
+            if (stripos($error_message, 'email') !== false) {
+                if (stripos($error_message, 'existe') !== false || stripos($error_message, 'déjà') !== false || stripos($error_message, 'utilisée') !== false) {
+                    $errors['email'] = $error_message;
+                } elseif (stripos($error_message, 'format') !== false || stripos($error_message, 'invalide') !== false) {
+                    $errors['email'] = $error_message;
+                } elseif (stripos($error_message, 'long') !== false || stripos($error_message, 'dépasser') !== false) {
+                    $errors['email'] = $error_message;
+                } elseif (stripos($error_message, 'obligatoire') !== false) {
+                    $errors['email'] = $error_message;
+                } else {
+                    $errors['email'] = $error_message;
+                }
+            }
+            // Erreurs liées au nom d'utilisateur
+            elseif (stripos($error_message, 'utilisateur') !== false || stripos($error_message, 'pseudo') !== false || stripos($error_message, 'username') !== false) {
                 $errors['username'] = $error_message;
-            } elseif (strpos($error_message, 'pseudo') !== false || strpos($error_message, 'utilisateur') !== false) {
-                $errors['username'] = $error_message;
-            } elseif (strpos($error_message, 'mot de passe') !== false) {
+            }
+            // Erreurs liées au mot de passe
+            elseif (stripos($error_message, 'mot de passe') !== false || stripos($error_message, 'password') !== false) {
                 $errors['password'] = $error_message;
-            } else {
+            }
+            // Erreurs liées au téléphone
+            elseif (stripos($error_message, 'téléphone') !== false || stripos($error_message, 'phone') !== false) {
+                $errors['phone'] = $error_message;
+            }
+            // Autres erreurs
+            else {
                 $errors['general'] = $error_message;
             }
         }
@@ -180,12 +197,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 id="phone"
                                 name="phone"
                                 value="<?= htmlspecialchars($form_data['phone']) ?>"
-                                placeholder="06 12 34 56 78">
+                                placeholder="0690123456"
+                                maxlength="20">
                             <?php if (isset($errors['phone'])): ?>
                                 <div class="invalid-feedback">
                                     <?= htmlspecialchars($errors['phone']) ?>
                                 </div>
                             <?php endif; ?>
+                            <div class="form-text">
+                                Format : 10 à 20 caractères (chiffres, espaces, tirets acceptés)
+                            </div>
                         </div>
 
                         <!-- MOT DE PASSE -->
@@ -200,16 +221,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     name="password"
                                     placeholder="Votre mot de passe"
                                     required
-                                    minlength="8">
+                                    minlength="8"
+                                    maxlength="255">
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('password')">
                                     <i class="fas fa-eye" id="eyePassword"></i>
                                 </button>
+                                <?php if (isset($errors['password'])): ?>
+                                    <div class="invalid-feedback">
+                                        <?= htmlspecialchars($errors['password']) ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                            <?php if (isset($errors['password'])): ?>
-                                <div class="invalid-feedback">
-                                    <?= htmlspecialchars($errors['password']) ?>
-                                </div>
-                            <?php endif; ?>
                             <div class="form-text">
                                 Minimum 8 caractères avec au moins une lettre et un chiffre
                             </div>
@@ -232,12 +254,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('password_confirm')">
                                     <i class="fas fa-eye" id="eyePassword_confirm"></i>
                                 </button>
+                                <?php if (isset($errors['password_confirm'])): ?>
+                                    <div class="invalid-feedback">
+                                        <?= htmlspecialchars($errors['password_confirm']) ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                            <?php if (isset($errors['password_confirm'])): ?>
-                                <div class="invalid-feedback">
-                                    <?= htmlspecialchars($errors['password_confirm']) ?>
-                                </div>
-                            <?php endif; ?>
                         </div>
 
                         <!-- BOUTON INSCRIPTION -->
@@ -281,11 +303,22 @@ LOGIQUE PRINCIPALE :
 3. Toute la validation métier est déléguée à User::register()
 4. Gestion intelligente des erreurs avec dispatch selon le contenu
 
+VALIDATION COMPLÈTE IMPLÉMENTÉE :
+- Nom d'utilisateur : 3-50 caractères, lettres/chiffres/tirets/underscores uniquement
+- Email : format valide, 100 caractères maximum, unicité vérifiée
+- Téléphone : 10-20 caractères, chiffres/espaces/tirets/+ uniquement (optionnel)
+- Mot de passe : 8-255 caractères, au moins 1 lettre et 1 chiffre
+
+GESTION D'ERREURS AMÉLIORÉE :
+- Messages conviviaux pour l'utilisateur (pas d'erreurs SQL brutes)
+- Dispatch intelligent des erreurs vers le bon champ
+- Conservation des données en cas d'erreur
+
 FONCTIONNALITÉS AVANCÉES :
 - Visibilité des mots de passe avec boutons toggle
 - Indicateur de force du mot de passe en temps réel
-- Conservation des données en cas d'erreur
 - Redirection automatique vers login après succès
+- Interface Bootstrap responsive
 
 SÉCURITÉ IMPLÉMENTÉE :
 - Validation centralisée dans la classe User (POO)
@@ -293,15 +326,9 @@ SÉCURITÉ IMPLÉMENTÉE :
 - Gestion d'exceptions robuste
 - Messages d'erreur contextuels sans révéler d'infos sensibles
 
-INTÉGRATION SYSTÈME :
-- Compatible avec includes/session.php
-- Utilise classes/User.php pour logique métier
-- Interface Bootstrap responsive
-- JavaScript pour UX améliorée
-
 FLUX UTILISATEUR :
 Formulaire → Validation confirmation → User::register() → Succès/Erreur
-En cas de succès : Affichage message + redirection login
+En cas de succès : Affichage message + redirection login après 2s
 En cas d'erreur : Affichage erreur spécifique + conservation données
 ================================================
 */

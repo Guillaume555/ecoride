@@ -10,7 +10,7 @@
  * - Statistiques utilisateur (trips, ratings)
  * 
  * @author EcoRide - ECF DWWM 2025
- * @version 1.1 - Correction bug inscription role + crédits
+ * @version 1.2 - Validation complète + messages d'erreur conviviaux
  */
 
 class User {
@@ -66,12 +66,14 @@ class User {
      * @throws Exception Si validation échoue ou email existe déjà
      */
     public function register($username, $email, $password, $phone = null) {
-        // Validation des données
+        // Validation complète de toutes les données
+        $this->validateUsername($username);
         $this->validateEmail($email);
         $this->validatePassword($password);
         
-        if (empty($username) || strlen($username) < 3) {
-            throw new Exception("Le nom d'utilisateur doit contenir au moins 3 caractères.");
+        // Validation du téléphone si fourni
+        if (!empty($phone)) {
+            $this->validatePhone($phone);
         }
         
         // Vérifier si l'email existe déjà
@@ -84,7 +86,6 @@ class User {
         
         // Insertion en base de données
         try {
-            // ✅ CORRECTION : 'passenger' au lieu de 'user', 20 crédits au lieu de 50
             $stmt = $this->pdo->prepare("
                 INSERT INTO users (username, email, password, phone, credits, role) 
                 VALUES (:username, :email, :password, :phone, 20, 'passenger')
@@ -109,7 +110,8 @@ class User {
             return true;
             
         } catch (PDOException $e) {
-            throw new Exception("Erreur lors de l'inscription : " . $e->getMessage());
+            // Gestion intelligente des erreurs SQL avec messages conviviaux
+            throw new Exception($this->handleSQLError($e, 'inscription'));
         }
     }
     
@@ -125,35 +127,45 @@ class User {
         // Validation de l'email
         $this->validateEmail($email);
         
-        // Récupération de l'utilisateur
-        $stmt = $this->pdo->prepare("SELECT * FROM users WHERE email = :email");
-        $stmt->execute([':email' => $email]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Vérifications
-        if (!$user) {
-            throw new Exception("Identifiants invalides.");
+        // Vérification que le mot de passe n'est pas vide
+        if (empty($password)) {
+            throw new Exception("Le mot de passe est obligatoire.");
         }
         
-        if (!password_verify($password, $user['password'])) {
-            throw new Exception("Identifiants invalides.");
+        try {
+            // Récupération de l'utilisateur
+            $stmt = $this->pdo->prepare("SELECT * FROM users WHERE email = :email");
+            $stmt->execute([':email' => $email]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Vérifications
+            if (!$user) {
+                throw new Exception("Identifiants invalides.");
+            }
+            
+            if (!password_verify($password, $user['password'])) {
+                throw new Exception("Identifiants invalides.");
+            }
+            
+            if ($user['is_banned']) {
+                throw new Exception("Votre compte a été suspendu. Contactez l'administrateur.");
+            }
+            
+            // Charger les données dans l'objet
+            $this->id = $user['id'];
+            $this->data = $user;
+            
+            // Créer la session (utilise les helpers existants de session.php)
+            loginUser($user);
+            
+            // Log de la connexion
+            $this->logAction('login', "Connexion réussie");
+            
+            return $this->data;
+            
+        } catch (PDOException $e) {
+            throw new Exception("Une erreur s'est produite lors de la connexion. Veuillez réessayer.");
         }
-        
-        if ($user['is_banned']) {
-            throw new Exception("Votre compte a été suspendu. Contactez l'administrateur.");
-        }
-        
-        // Charger les données dans l'objet
-        $this->id = $user['id'];
-        $this->data = $user;
-        
-        // Créer la session (utilise les helpers existants de session.php)
-        loginUser($user);
-        
-        // Log de la connexion
-        $this->logAction('login', "Connexion réussie");
-        
-        return $this->data;
     }
     
     /**
@@ -187,18 +199,23 @@ class User {
      * @throws Exception Si utilisateur introuvable
      */
     public function loadById($id) {
-        $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$user) {
-            throw new Exception("Utilisateur introuvable.");
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = :id");
+            $stmt->execute([':id' => $id]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$user) {
+                throw new Exception("Utilisateur introuvable.");
+            }
+            
+            $this->id = $id;
+            $this->data = $user;
+            
+            return $this->data;
+            
+        } catch (PDOException $e) {
+            throw new Exception("Erreur lors du chargement des données utilisateur.");
         }
-        
-        $this->id = $id;
-        $this->data = $user;
-        
-        return $this->data;
     }
     
     /**
@@ -215,11 +232,12 @@ class User {
             throw new Exception("Aucun utilisateur chargé.");
         }
         
-        // Validation
+        // Validation complète
+        $this->validateUsername($username);
         $this->validateEmail($email);
         
-        if (empty($username) || strlen($username) < 3) {
-            throw new Exception("Le nom d'utilisateur doit contenir au moins 3 caractères.");
+        if (!empty($phone)) {
+            $this->validatePhone($phone);
         }
         
         // Vérifier si l'email est déjà utilisé par un autre compte
@@ -259,7 +277,7 @@ class User {
             return true;
             
         } catch (PDOException $e) {
-            throw new Exception("Erreur lors de la mise à jour : " . $e->getMessage());
+            throw new Exception($this->handleSQLError($e, 'mise à jour'));
         }
     }
     
@@ -316,7 +334,7 @@ class User {
             
         } catch (Exception $e) {
             $this->pdo->rollBack();
-            throw new Exception("Erreur lors de la suppression : " . $e->getMessage());
+            throw new Exception("Erreur lors de la suppression du compte. Veuillez réessayer.");
         }
     }
     
@@ -360,7 +378,7 @@ class User {
             return $this->data['credits'];
             
         } catch (PDOException $e) {
-            throw new Exception("Erreur lors de l'ajout de crédits : " . $e->getMessage());
+            throw new Exception("Erreur lors de l'ajout de crédits. Veuillez réessayer.");
         }
     }
     
@@ -406,7 +424,7 @@ class User {
             return $this->data['credits'];
             
         } catch (PDOException $e) {
-            throw new Exception("Erreur lors du retrait de crédits : " . $e->getMessage());
+            throw new Exception("Erreur lors du retrait de crédits. Veuillez réessayer.");
         }
     }
     
@@ -457,7 +475,7 @@ class User {
             return true;
             
         } catch (PDOException $e) {
-            throw new Exception("Erreur lors du bannissement : " . $e->getMessage());
+            throw new Exception("Erreur lors du bannissement. Veuillez réessayer.");
         }
     }
     
@@ -487,7 +505,7 @@ class User {
             return true;
             
         } catch (PDOException $e) {
-            throw new Exception("Erreur lors du débannissement : " . $e->getMessage());
+            throw new Exception("Erreur lors du débannissement. Veuillez réessayer.");
         }
     }
     
@@ -527,7 +545,7 @@ class User {
             return $this->data['credits'];
             
         } catch (PDOException $e) {
-            throw new Exception("Erreur lors de la mise à jour des crédits : " . $e->getMessage());
+            throw new Exception("Erreur lors de la mise à jour des crédits. Veuillez réessayer.");
         }
     }
     
@@ -544,19 +562,24 @@ class User {
             throw new Exception("Aucun utilisateur chargé.");
         }
         
-        $stmt = $this->pdo->prepare("
-            SELECT t.*, v.brand, v.model, v.color,
-                   COUNT(DISTINCT b.id) as bookings_count
-            FROM trips t
-            LEFT JOIN vehicles v ON t.vehicle_id = v.id
-            LEFT JOIN bookings b ON t.id = b.trip_id AND b.status != 'cancelled'
-            WHERE t.driver_id = :user_id
-            GROUP BY t.id
-            ORDER BY t.departure_time DESC
-        ");
-        $stmt->execute([':user_id' => $this->id]);
-        
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT t.*, v.brand, v.model, v.color,
+                       COUNT(DISTINCT b.id) as bookings_count
+                FROM trips t
+                LEFT JOIN vehicles v ON t.vehicle_id = v.id
+                LEFT JOIN bookings b ON t.id = b.trip_id AND b.status != 'cancelled'
+                WHERE t.driver_id = :user_id
+                GROUP BY t.id
+                ORDER BY t.departure_time DESC
+            ");
+            $stmt->execute([':user_id' => $this->id]);
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+        } catch (PDOException $e) {
+            throw new Exception("Erreur lors de la récupération des trajets.");
+        }
     }
     
     /**
@@ -569,19 +592,24 @@ class User {
             throw new Exception("Aucun utilisateur chargé.");
         }
         
-        $stmt = $this->pdo->prepare("
-            SELECT b.*, t.departure_city, t.arrival_city, t.departure_time,
-                   u.username as driver_name, v.brand, v.model, v.fuel_type
-            FROM bookings b
-            JOIN trips t ON b.trip_id = t.id
-            JOIN users u ON t.driver_id = u.id
-            LEFT JOIN vehicles v ON t.vehicle_id = v.id
-            WHERE b.passenger_id = :user_id
-            ORDER BY t.departure_time DESC
-        ");
-        $stmt->execute([':user_id' => $this->id]);
-        
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT b.*, t.departure_city, t.arrival_city, t.departure_time,
+                       u.username as driver_name, v.brand, v.model, v.fuel_type
+                FROM bookings b
+                JOIN trips t ON b.trip_id = t.id
+                JOIN users u ON t.driver_id = u.id
+                LEFT JOIN vehicles v ON t.vehicle_id = v.id
+                WHERE b.passenger_id = :user_id
+                ORDER BY t.departure_time DESC
+            ");
+            $stmt->execute([':user_id' => $this->id]);
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+        } catch (PDOException $e) {
+            throw new Exception("Erreur lors de la récupération des réservations.");
+        }
     }
     
     /**
@@ -594,15 +622,20 @@ class User {
             throw new Exception("Aucun utilisateur chargé.");
         }
         
-        $stmt = $this->pdo->prepare("
-            SELECT AVG(rating) as avg_rating, COUNT(*) as total_reviews
-            FROM reviews
-            WHERE reviewed_user_id = :user_id AND status = 'validated'
-        ");
-        $stmt->execute([':user_id' => $this->id]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        return $result['avg_rating'] ? round($result['avg_rating'], 1) : 0;
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT AVG(rating) as avg_rating, COUNT(*) as total_reviews
+                FROM reviews
+                WHERE reviewed_user_id = :user_id AND status = 'validated'
+            ");
+            $stmt->execute([':user_id' => $this->id]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            return $result['avg_rating'] ? round($result['avg_rating'], 1) : 0;
+            
+        } catch (PDOException $e) {
+            return 0; // Retourner 0 en cas d'erreur au lieu de planter
+        }
     }
     
     
@@ -616,14 +649,46 @@ class User {
      * @return bool True si l'email existe
      */
     public static function exists($pdo, $email) {
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = :email");
-        $stmt->execute([':email' => $email]);
-        
-        return (bool) $stmt->fetch();
+        try {
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = :email");
+            $stmt->execute([':email' => $email]);
+            
+            return (bool) $stmt->fetch();
+            
+        } catch (PDOException $e) {
+            return false;
+        }
     }
     
     
     // ==================== MÉTHODES PRIVÉES (VALIDATION) ====================
+    
+    /**
+     * Valider un nom d'utilisateur
+     * 
+     * @param string $username Nom d'utilisateur à valider
+     * @throws Exception Si username invalide
+     */
+    private function validateUsername($username) {
+        if (empty($username)) {
+            throw new Exception("Le nom d'utilisateur est obligatoire.");
+        }
+        
+        $length = strlen($username);
+        
+        if ($length < 3) {
+            throw new Exception("Le nom d'utilisateur doit contenir au moins 3 caractères.");
+        }
+        
+        if ($length > 50) {
+            throw new Exception("Le nom d'utilisateur ne peut pas dépasser 50 caractères.");
+        }
+        
+        // Vérifier que le username ne contient que des caractères autorisés
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $username)) {
+            throw new Exception("Le nom d'utilisateur ne peut contenir que des lettres, chiffres, tirets et underscores.");
+        }
+    }
     
     /**
      * Valider le format d'un email
@@ -636,8 +701,35 @@ class User {
             throw new Exception("L'email est obligatoire.");
         }
         
+        if (strlen($email) > 100) {
+            throw new Exception("L'adresse email ne peut pas dépasser 100 caractères.");
+        }
+        
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception("Format d'email invalide.");
+            throw new Exception("Le format de l'email est invalide.");
+        }
+    }
+    
+    /**
+     * Valider un numéro de téléphone
+     * 
+     * @param string $phone Numéro de téléphone à valider
+     * @throws Exception Si téléphone invalide
+     */
+    private function validatePhone($phone) {
+        $length = strlen($phone);
+        
+        if ($length > 20) {
+            throw new Exception("Le numéro de téléphone ne peut pas dépasser 20 caractères.");
+        }
+        
+        if ($length < 10) {
+            throw new Exception("Le numéro de téléphone doit contenir au moins 10 caractères.");
+        }
+        
+        // Vérifier le format (nombres, espaces, tirets, parenthèses, +)
+        if (!preg_match('/^[0-9\s\-\(\)\+]+$/', $phone)) {
+            throw new Exception("Le numéro de téléphone contient des caractères non autorisés. Utilisez uniquement des chiffres, espaces, tirets, parenthèses ou le signe +.");
         }
     }
     
@@ -655,6 +747,75 @@ class User {
         if (strlen($password) < 8) {
             throw new Exception("Le mot de passe doit contenir au moins 8 caractères.");
         }
+        
+        if (strlen($password) > 255) {
+            throw new Exception("Le mot de passe ne peut pas dépasser 255 caractères.");
+        }
+        
+        // Vérifier qu'il contient au moins une lettre et un chiffre
+        if (!preg_match('/[a-zA-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
+            throw new Exception("Le mot de passe doit contenir au moins une lettre et un chiffre.");
+        }
+    }
+    
+    /**
+     * Gérer les erreurs SQL et retourner des messages conviviaux
+     * 
+     * @param PDOException $e Exception PDO
+     * @param string $action Action en cours (inscription, mise à jour, etc.)
+     * @return string Message d'erreur convivial
+     */
+    private function handleSQLError($e, $action = 'opération') {
+        $errorMessage = $e->getMessage();
+        
+        // Erreur : données trop longues
+        if (strpos($errorMessage, 'Data too long') !== false) {
+            if (strpos($errorMessage, 'phone') !== false) {
+                return "Le numéro de téléphone est trop long (20 caractères maximum).";
+            }
+            if (strpos($errorMessage, 'username') !== false) {
+                return "Le nom d'utilisateur est trop long (50 caractères maximum).";
+            }
+            if (strpos($errorMessage, 'email') !== false) {
+                return "L'adresse email est trop longue (100 caractères maximum).";
+            }
+            if (strpos($errorMessage, 'password') !== false) {
+                return "Le mot de passe est trop long (255 caractères maximum).";
+            }
+            return "Une des informations saisies est trop longue.";
+        }
+        
+        // Erreur : valeur dupliquée (email déjà utilisé)
+        if (strpos($errorMessage, 'Duplicate entry') !== false) {
+            if (strpos($errorMessage, 'email') !== false) {
+                return "Cette adresse email est déjà utilisée.";
+            }
+            if (strpos($errorMessage, 'username') !== false) {
+                return "Ce nom d'utilisateur est déjà pris.";
+            }
+            return "Cette information est déjà utilisée par un autre compte.";
+        }
+        
+        // Erreur : valeur NULL non autorisée
+        if (strpos($errorMessage, 'cannot be null') !== false) {
+            return "Certaines informations obligatoires sont manquantes.";
+        }
+        
+        // Erreur : données tronquées
+        if (strpos($errorMessage, 'Data truncated') !== false || strpos($errorMessage, 'truncated') !== false) {
+            if (strpos($errorMessage, 'role') !== false) {
+                return "Le rôle utilisateur est invalide.";
+            }
+            return "Une des informations saisies est dans un format incorrect.";
+        }
+        
+        // Erreur : connexion à la base de données
+        if (strpos($errorMessage, 'SQLSTATE[HY000]') !== false) {
+            return "Impossible de se connecter à la base de données. Veuillez réessayer plus tard.";
+        }
+        
+        // Autres erreurs : message générique sans détails techniques
+        return "Une erreur s'est produite lors de l'$action. Veuillez réessayer.";
     }
     
     /**
@@ -665,7 +826,12 @@ class User {
      */
     private function logAction($action, $details) {
         if ($this->id) {
-            logUserActivity($this->id, $action, $details);
+            try {
+                logUserActivity($this->id, $action, $details);
+            } catch (Exception $e) {
+                // Ne pas planter si le log échoue
+                error_log("Erreur log MongoDB : " . $e->getMessage());
+            }
         }
     }
     
