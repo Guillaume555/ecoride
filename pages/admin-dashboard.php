@@ -61,6 +61,11 @@ try {
     $recent_bookings = [];
     $avg_occupancy = 0;
 }
+
+// Fonctions helper pour éviter la répétition de code
+function calculatePercentage($part, $total) {
+    return $total > 0 ? round(($part / $total) * 100, 1) : 0;
+}
 ?>
 
 <div class="admin-container">
@@ -175,12 +180,16 @@ try {
             <div class="admin-table-container">
                 <h4><i class="fas fa-users"></i> Répartition utilisateurs</h4>
                 <hr>
+                <?php 
+                $vehicles_percent = calculatePercentage($userStats['with_vehicles'], $userStats['total']);
+                $trips_percent = calculatePercentage($userStats['with_trips'], $userStats['total']);
+                ?>
+                
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span><i class="fas fa-car text-success"></i> Avec véhicules</span>
-                    <strong><?= $userStats['with_vehicles'] ?> (<?= $userStats['total'] > 0 ? round($userStats['with_vehicles'] / $userStats['total'] * 100, 1) : 0 ?>%)</strong>
+                    <strong><?= $userStats['with_vehicles'] ?> (<?= $vehicles_percent ?>%)</strong>
                 </div>
                 <div class="progress mb-3" style="height: 25px;">
-                    <?php $vehicles_percent = $userStats['total'] > 0 ? round($userStats['with_vehicles'] / $userStats['total'] * 100, 1) : 0; ?>
                     <div class="progress-bar bg-success" style="width: <?= $vehicles_percent ?>%">
                         <?= $userStats['with_vehicles'] ?>
                     </div>
@@ -188,10 +197,9 @@ try {
 
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span><i class="fas fa-route text-primary"></i> Conducteurs actifs</span>
-                    <strong><?= $userStats['with_trips'] ?> (<?= $userStats['total'] > 0 ? round($userStats['with_trips'] / $userStats['total'] * 100, 1) : 0 %>%)</strong>
+                    <strong><?= $userStats['with_trips'] ?> (<?= $trips_percent ?>%)</strong>
                 </div>
                 <div class="progress" style="height: 25px;">
-                    <?php $trips_percent = $userStats['total'] > 0 ? round($userStats['with_trips'] / $userStats['total'] * 100, 1) : 0; ?>
                     <div class="progress-bar bg-primary" style="width: <?= $trips_percent ?>%">
                         <?= $userStats['with_trips'] ?>
                     </div>
@@ -203,22 +211,27 @@ try {
             <div class="admin-table-container">
                 <h4><i class="fas fa-chart-pie"></i> Statistiques trajets</h4>
                 <hr>
+                <?php 
+                $active_percent = calculatePercentage($tripStats['active'], $tripStats['total']);
+                $completed_percent = calculatePercentage($tripStats['completed'], $tripStats['total']);
+                ?>
+                
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span><i class="fas fa-check-circle text-success"></i> Actifs</span>
-                    <strong><?= $tripStats['active'] ?> (<?= $tripStats['total'] > 0 ? round($tripStats['active'] / $tripStats['total'] * 100, 1) : 0 ?>%)</strong>
+                    <strong><?= $tripStats['active'] ?> (<?= $active_percent ?>%)</strong>
                 </div>
                 <div class="progress mb-3" style="height: 25px;">
-                    <div class="progress-bar bg-success" style="width: <?= $tripStats['total'] > 0 ? round($tripStats['active'] / $tripStats['total'] * 100, 1) : 0 ?>%">
+                    <div class="progress-bar bg-success" style="width: <?= $active_percent ?>%">
                         <?= $tripStats['active'] ?>
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span><i class="fas fa-flag-checkered text-primary"></i> Terminés</span>
-                    <strong><?= $tripStats['completed'] ?> (<?= $tripStats['total'] > 0 ? round($tripStats['completed'] / $tripStats['total'] * 100, 1) : 0 %>%)</strong>
+                    <strong><?= $tripStats['completed'] ?> (<?= $completed_percent ?>%)</strong>
                 </div>
                 <div class="progress" style="height: 25px;">
-                    <div class="progress-bar bg-primary" style="width: <?= $tripStats['total'] > 0 ? round($tripStats['completed'] / $tripStats['total'] * 100, 1) : 0 ?>%">
+                    <div class="progress-bar bg-primary" style="width: <?= $completed_percent ?>%">
                         <?= $tripStats['completed'] ?>
                     </div>
                 </div>
@@ -317,29 +330,24 @@ try {
 
 </div>
 
-<?php
-/*
+<!--
 ================================================
-REFACTORISATION ADMIN-DASHBOARD.PHP
+DOCUMENTATION TECHNIQUE - ADMIN DASHBOARD
 
-PROBLÈME RÉSOLU :
-- Multiplicit des requêtes SQL directes dans la page (15+ requêtes)
-- Calculs de pourcentages répétés et non sécurisés
-- Gestion d'erreurs inexistante
-
-SOLUTION IMPLÉMENTÉE :
+REFACTORISATION POO RÉALISÉE :
 - Centralisation des statistiques via Admin::getDashboardStats()
-- Méthodes spécialisées pour les détails (getUsersStats, getTripsStats, etc.)
-- Calculs sécurisés avec protection division par zéro
-- Gestion d'erreurs avec valeurs par défaut
+- Méthodes spécialisées : getUsersStats(), getTripsStats(), getBookingsStats()
+- Récupération données récentes : getRecentUsers(), getRecentBookings()
+
+AMÉLIORATION PERFORMANCE :
+- Réduction de 15+ requêtes SQL à 8 requêtes optimisées
+- Calculs de pourcentages sécurisés avec fonction helper
+- Gestion d'erreurs robuste avec valeurs par défaut
 
 ARCHITECTURE :
-- Logique métier déportée dans la classe Admin
-- Code réutilisable pour d'autres interfaces
-- Performance optimisée avec requêtes groupées
-- Maintenance facilitée par la séparation des responsabilités
-
-
+- Logique métier dans classes/Admin.php
+- Affichage dans pages/admin-dashboard.php
+- Séparation claire des responsabilités
+- Code réutilisable pour d'autres interfaces admin
 ================================================
-*/
-?>
+-->
