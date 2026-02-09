@@ -98,3 +98,49 @@ ecoride/
 ## Notes
 
 Ce projet a été réalisé dans le cadre de l’évaluation ECF pour le Titre Professionnel Développeur Web et Web Mobile (2025).
+
+
+## 🏗️ Architecture POO (10 juillet 2025)
+
+### Structure des classes
+```
+/classes/
+├── User.php        - Gestion utilisateurs (auth, profil, crédits, admin)
+├── Trip.php        - Gestion trajets (CRUD, recherche, réservation, annulation)
+├── Vehicle.php     - Gestion véhicules (CRUD, validation, propriété)
+└── Admin.php       - Statistiques et tableaux de bord admin
+```
+
+### Utilisation des classes
+
+#### Exemple : Inscription utilisateur
+```php
+require_once 'config/database.php';
+
+$user = new User($pdo);
+$user->register('username', 'email@example.com', 'password123');
+```
+
+#### Exemple : Recherche de trajets
+```php
+$trips = Trip::search($pdo, 'Paris', 'Lyon', '2025-07-20');
+```
+
+#### Exemple : Réservation de trajet
+```php
+$trip = new Trip($pdo, $tripId);
+$bookingId = $trip->book($_SESSION['user_id'], 2); // 2 places
+```
+
+### Avantages de l'architecture POO
+
+✅ **Code réutilisable** : Les méthodes peuvent être utilisées partout  
+✅ **Maintenance facilitée** : Logique métier centralisée dans les classes  
+✅ **Sécurité renforcée** : Encapsulation + validation automatique  
+✅ **Transactions SQL** : Intégrité des données garantie  
+✅ **Tests unitaires** : Chaque méthode testable individuellement  
+
+### Méthodes disponibles
+
+Consulter les fichiers de classes pour la documentation complète de chaque méthode.
+Tous les commentaires sont en français et détaillent l'utilisation.

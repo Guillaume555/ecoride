@@ -1,8 +1,8 @@
 <?php
 /*
 ================================================
-FICHIER: pages/admin-dashboard.php - Mon tableau de bord admin
-Description: Page principale du back-office avec toutes les stats importantes
+FICHIER: pages/admin-dashboard.php - Tableau de bord administrateur
+Description: Interface principale d'administration avec statistiques centralisées
 ================================================
 */
 
@@ -319,22 +319,27 @@ try {
 
 <?php
 /*
-===============================================
-Bon, j'ai pas mal simplifié cette page !
+================================================
+REFACTORISATION ADMIN-DASHBOARD.PHP
 
-Avant j'avais 15 requêtes SQL partout dans le code, c'était le bordel.
-Maintenant j'utilise mes classes Admin avec getDashboardStats() qui me récupère
-tout d'un coup. Beaucoup plus propre.
+PROBLÈME RÉSOLU :
+- Multiplicit des requêtes SQL directes dans la page (15+ requêtes)
+- Calculs de pourcentages répétés et non sécurisés
+- Gestion d'erreurs inexistante
 
-J'ai aussi séparé les calculs de pourcentages dans des variables PHP séparées
-pour éviter les erreurs de syntaxe dans les attributs style.
+SOLUTION IMPLÉMENTÉE :
+- Centralisation des statistiques via Admin::getDashboardStats()
+- Méthodes spécialisées pour les détails (getUsersStats, getTripsStats, etc.)
+- Calculs sécurisés avec protection division par zéro
+- Gestion d'erreurs avec valeurs par défaut
 
-La logique est maintenant centralisée dans la classe Admin, donc si je veux
-réutiliser ces stats ailleurs, c'est facile.
+ARCHITECTURE :
+- Logique métier déportée dans la classe Admin
+- Code réutilisable pour d'autres interfaces
+- Performance optimisée avec requêtes groupées
+- Maintenance facilitée par la séparation des responsabilités
 
-Et si une erreur arrive, j'ai des valeurs par défaut pour que la page plante pas.
 
-Prochaine étape: refactoriser admin-users.php avec User::ban(), User::delete(), etc.
-===============================================
+================================================
 */
 ?>

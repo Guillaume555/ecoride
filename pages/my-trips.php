@@ -197,7 +197,7 @@ try {
                                             <div class="col-6">
                                                 <small class="text-muted">Véhicule :</small><br>
                                                 <strong><?= htmlspecialchars($trip['brand']) ?> <?= htmlspecialchars($trip['model']) ?></strong>
-                                                <?php if ($trip['fuel_type'] === 'électrique'): ?>
+                                                <?php if ($trip['fuel_type'] === 'électrique' || $trip['fuel_type'] === 'Électrique'): ?>
                                                     <span class="badge bg-success">⚡ Éco</span>
                                                 <?php endif; ?>
                                             </div>
@@ -290,7 +290,7 @@ try {
                                             <div class="col-6">
                                                 <small class="text-muted">Véhicule :</small><br>
                                                 <strong><?= htmlspecialchars($booking['brand']) ?> <?= htmlspecialchars($booking['model']) ?></strong>
-                                                <?php if ($booking['fuel_type'] === 'électrique'): ?>
+                                                <?php if ($booking['fuel_type'] === 'électrique' || $booking['fuel_type'] === 'Électrique'): ?>
                                                     <span class="badge bg-success">⚡ Éco</span>
                                                 <?php endif; ?>
                                             </div>

@@ -44,17 +44,6 @@ class Trip
 
     /**
      * CRÉER UN NOUVEAU TRAJET
-     * 
-     * Utilisation :
-     * $trip = new Trip($pdo);
-     * $tripId = $trip->create($driverId, $vehicleId, [
-     *     'departure_city' => 'Paris',
-     *     'arrival_city' => 'Lyon',
-     *     'departure_time' => '2025-07-20 14:00:00',
-     *     'price_per_seat' => 15,
-     *     'available_seats' => 3,
-     *     'preferences' => 'Trajet sympa !'
-     * ]);
      */
     public function create($driverId, $vehicleId, $data)
     {
@@ -128,9 +117,6 @@ class Trip
 
     /**
      * MODIFIER UN TRAJET EXISTANT
-     * 
-     * Tu peux modifier : departure_city, arrival_city, departure_time, price_per_seat, preferences
-     * SEULEMENT si le trajet n'est pas encore passé et qu'il est actif
      */
     public function update($data)
     {
@@ -166,7 +152,8 @@ class Trip
         $params[] = $this->id;
 
         try {
-            $sql = "UPDATE trips SET " . implode(', ', $updates) . ", updated_at = NOW() WHERE id = ?";
+            // CORRECTION : Retrait de updated_at
+            $sql = "UPDATE trips SET " . implode(', ', $updates) . " WHERE id = ?";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute($params);
 
@@ -182,9 +169,6 @@ class Trip
 
     /**
      * SUPPRIMER UN TRAJET
-     * 
-     * Attention : on ne supprime pas vraiment, on marque juste comme "deleted"
-     * Si des passagers ont réservé, il faut utiliser cancel() à la place
      */
     public function delete()
     {
@@ -204,9 +188,10 @@ class Trip
         }
 
         try {
+            // CORRECTION : Retrait de updated_at
             $stmt = $this->pdo->prepare("
                 UPDATE trips 
-                SET status = 'deleted', updated_at = NOW() 
+                SET status = 'deleted'
                 WHERE id = ?
             ");
             $stmt->execute([$this->id]);
@@ -224,16 +209,14 @@ class Trip
 
     /**
      * CHARGER UN TRAJET PAR SON ID
-     * 
-     * Récupère toutes les infos du trajet + infos du conducteur + infos du véhicule
      */
     public function loadById($id)
     {
         $stmt = $this->pdo->prepare("
             SELECT t.*,
-                u.username as driver_name,
-                u.phone as driver_phone,
-                v.brand, v.model, v.color, v.fuel_type, v.license_plate, v.year
+                   u.username as driver_name,
+                   u.phone as driver_phone,
+                   v.brand, v.model, v.color, v.fuel_type, v.license_plate, v.year
             FROM trips t
             JOIN users u ON t.driver_id = u.id
             LEFT JOIN vehicles v ON t.vehicle_id = v.id
@@ -254,12 +237,6 @@ class Trip
 
     /**
      * RECHERCHER DES TRAJETS DISPONIBLES
-     * 
-     * Utilisation :
-     * $trips = Trip::search($pdo, 'Paris', 'Lyon');
-     * $trips = Trip::search($pdo, 'Paris', 'Lyon', '2025-07-20');
-     * 
-     * Retourne tous les trajets actifs qui correspondent + qui sont dans le futur
      */
     public static function search($pdo, $departure, $arrival, $date = null)
     {
@@ -279,7 +256,6 @@ class Trip
 
         $params = ["%$departure%", "%$arrival%"];
 
-        // Si une date est précisée, filtrer aussi par date
         if ($date) {
             $sql .= " AND DATE(t.departure_time) = ?";
             $params[] = $date;
@@ -295,17 +271,12 @@ class Trip
 
     /**
      * RÉCUPÉRER TOUS LES TRAJETS D'UN UTILISATEUR
-     * 
-     * Utilisation :
-     * $myTrips = Trip::getByUser($pdo, $_SESSION['user_id']);
-     * 
-     * Retourne les trajets où l'utilisateur est conducteur + compte les réservations
      */
     public static function getByUser($pdo, $userId)
     {
         $stmt = $pdo->prepare("
             SELECT t.*, 
-                   v.brand, v.model, v.color,
+                   v.brand, v.model, v.color, v.fuel_type,
                    COUNT(DISTINCT b.id) as bookings_count
             FROM trips t
             LEFT JOIN vehicles v ON t.vehicle_id = v.id
@@ -347,18 +318,7 @@ class Trip
     /**
      * RÉSERVER UN TRAJET (créer une réservation)
      * 
-     * Cette fonction fait AUTOMATIQUEMENT :
-     * 1. Vérifie que le passager a assez de crédits
-     * 2. Retire les crédits du passager
-     * 3. Ajoute les crédits au conducteur
-     * 4. Crée la réservation
-     * 5. Réduit le nombre de places disponibles
-     * 
-     * Si une erreur arrive, TOUT est annulé (transaction SQL)
-     * 
-     * Utilisation :
-     * $trip = new Trip($pdo, $tripId);
-     * $bookingId = $trip->book($_SESSION['user_id'], 2); // Réserver 2 places
+     * CORRECTION FINALE : Sans created_at et sans updated_at
      */
     public function book($passengerId, $seatsCount)
     {
@@ -403,7 +363,7 @@ class Trip
             $driver = new User($this->pdo, $this->data['driver_id']);
             $driver->addCredits($totalPrice);
 
-           // 3. Créer la réservation dans la table bookings
+            // 3. Créer la réservation (SANS created_at)
             $stmt = $this->pdo->prepare("
                 INSERT INTO bookings (
                     trip_id, passenger_id, seats_booked, total_price, status
@@ -421,11 +381,10 @@ class Trip
 
             $bookingId = $this->pdo->lastInsertId();
 
-            // 4. Réduire les places disponibles
+            // 4. Réduire les places disponibles (SANS updated_at)
             $stmt = $this->pdo->prepare("
                 UPDATE trips 
-                SET available_seats = available_seats - ?,
-                    updated_at = NOW()
+                SET available_seats = available_seats - ?
                 WHERE id = ?
             ");
             $stmt->execute([$seatsCount, $this->id]);
@@ -433,10 +392,10 @@ class Trip
             // Si tout s'est bien passé, valider la transaction
             $this->pdo->commit();
             
-            // AJOUTE CECI : Synchroniser la session maintenant que la transaction est validée
+            // Synchroniser la session maintenant que la transaction est validée
             if (isLoggedIn() && $_SESSION['user_id'] == $passengerId) {
-                $passenger->loadById($passengerId);  // Recharger les données
-                updateUserCredits($passenger->get('credits'));  // Mettre à jour la session
+                $passenger->loadById($passengerId);
+                updateUserCredits($passenger->get('credits'));
             }
 
             // Recharger les données du trajet
@@ -455,12 +414,6 @@ class Trip
 
     /**
      * RÉCUPÉRER TOUTES LES RÉSERVATIONS D'UN TRAJET
-     * 
-     * Utilisation :
-     * $trip = new Trip($pdo, $tripId);
-     * $bookings = $trip->getBookings();
-     * 
-     * Retourne la liste des passagers qui ont réservé ce trajet
      */
     public function getBookings()
     {
@@ -469,35 +422,22 @@ class Trip
         }
 
         $stmt = $this->pdo->prepare("
-        SELECT b.*, u.username as passenger_name, u.phone as passenger_phone
-        FROM bookings b
-        JOIN users u ON b.passenger_id = u.id
-        WHERE b.trip_id = ?
-        ORDER BY b.id DESC    
-    ");
+            SELECT b.*, u.username as passenger_name, u.phone as passenger_phone
+            FROM bookings b
+            JOIN users u ON b.passenger_id = u.id
+            WHERE b.trip_id = ?
+            ORDER BY b.id DESC    
+        ");
         $stmt->execute([$this->id]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
 
-
     // ========== ANNULER UN TRAJET ==========
 
     /**
      * ANNULER UN TRAJET COMPLET
-     * 
-     * Cette fonction fait AUTOMATIQUEMENT :
-     * 1. Rembourse TOUS les passagers
-     * 2. Retire les crédits du conducteur
-     * 3. Annule toutes les réservations
-     * 4. Marque le trajet comme "cancelled"
-     * 
-     * TOUT est fait dans une transaction (tout ou rien)
-     * 
-     * Utilisation :
-     * $trip = new Trip($pdo, $tripId);
-     * $trip->cancel();
      */
     public function cancel()
     {
@@ -510,27 +450,20 @@ class Trip
         }
 
         try {
-            // TRANSACTION SQL : tout ou rien
             $this->pdo->beginTransaction();
 
-            // 1. Rembourser tous les passagers + retirer au conducteur
             $this->refundAllPassengers();
-
-            // 2. Annuler toutes les réservations
             $this->cancelAllBookings();
 
-            // 3. Marquer le trajet comme annulé
+            // CORRECTION : Retrait de updated_at
             $stmt = $this->pdo->prepare("
                 UPDATE trips 
-                SET status = 'cancelled', updated_at = NOW() 
+                SET status = 'cancelled'
                 WHERE id = ?
             ");
             $stmt->execute([$this->id]);
 
-            // Valider la transaction
             $this->pdo->commit();
-
-            // Recharger les données
             $this->loadById($this->id);
 
             logUserActivity($this->data['driver_id'], 'cancel_trip', "Trajet annulé : ID {$this->id}");
@@ -544,11 +477,9 @@ class Trip
 
     /**
      * FONCTION PRIVÉE : Rembourser tous les passagers
-     * (appelée automatiquement par cancel())
      */
     private function refundAllPassengers()
     {
-        // Récupérer toutes les réservations confirmées
         $stmt = $this->pdo->prepare("
             SELECT passenger_id, total_price 
             FROM bookings 
@@ -557,22 +488,18 @@ class Trip
         $stmt->execute([$this->id]);
         $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Rembourser chaque passager
         foreach ($bookings as $booking) {
             $passenger = new User($this->pdo, $booking['passenger_id']);
             $passenger->addCredits($booking['total_price']);
         }
 
-        // Retirer les crédits du conducteur
         if (!empty($bookings)) {
             $totalToRefund = array_sum(array_column($bookings, 'total_price'));
             $driver = new User($this->pdo, $this->data['driver_id']);
 
-            // Si le conducteur a assez de crédits, on retire
             if ($driver->getCredits() >= $totalToRefund) {
                 $driver->removeCredits($totalToRefund);
             } else {
-                // Sinon on met à 0 (cas limite, ne devrait pas arriver)
                 $stmt = $this->pdo->prepare("UPDATE users SET credits = 0 WHERE id = ?");
                 $stmt->execute([$this->data['driver_id']]);
             }
@@ -581,13 +508,13 @@ class Trip
 
     /**
      * FONCTION PRIVÉE : Annuler toutes les réservations
-     * (appelée automatiquement par cancel())
      */
     private function cancelAllBookings()
     {
+        // CORRECTION : Retrait de updated_at
         $stmt = $this->pdo->prepare("
             UPDATE bookings 
-            SET status = 'cancelled', updated_at = NOW()
+            SET status = 'cancelled'
             WHERE trip_id = ? AND status = 'confirmed'
         ");
         $stmt->execute([$this->id]);
@@ -598,7 +525,6 @@ class Trip
 
     /**
      * MASQUER UN TRAJET (action admin)
-     * Le trajet n'apparaît plus dans les recherches
      */
     public function hide()
     {
@@ -607,9 +533,10 @@ class Trip
         }
 
         try {
+            // CORRECTION : Retrait de updated_at
             $stmt = $this->pdo->prepare("
                 UPDATE trips 
-                SET status = 'hidden', updated_at = NOW() 
+                SET status = 'hidden'
                 WHERE id = ?
             ");
             $stmt->execute([$this->id]);
@@ -624,7 +551,6 @@ class Trip
 
     /**
      * AFFICHER UN TRAJET MASQUÉ (action admin)
-     * Le trajet redevient visible dans les recherches
      */
     public function show()
     {
@@ -633,9 +559,10 @@ class Trip
         }
 
         try {
+            // CORRECTION : Retrait de updated_at
             $stmt = $this->pdo->prepare("
                 UPDATE trips 
-                SET status = 'active', updated_at = NOW() 
+                SET status = 'active'
                 WHERE id = ?
             ");
             $stmt->execute([$this->id]);
@@ -651,9 +578,6 @@ class Trip
 
     // ========== RÉCUPÉRER DES INFOS ==========
 
-    /**
-     * Obtenir les infos complètes du conducteur
-     */
     public function getDriver()
     {
         if (!$this->id) {
@@ -664,9 +588,6 @@ class Trip
         return $driver->getData();
     }
 
-    /**
-     * Obtenir les infos du véhicule
-     */
     public function getVehicle()
     {
         if (!$this->id) {
@@ -679,26 +600,16 @@ class Trip
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Obtenir l'ID du trajet
-     */
     public function getId()
     {
         return $this->id;
     }
 
-    /**
-     * Obtenir toutes les données du trajet
-     */
     public function getData()
     {
         return $this->data;
     }
 
-    /**
-     * Obtenir une donnée spécifique
-     * Exemple : $trip->get('departure_city')
-     */
     public function get($key)
     {
         return $this->data[$key] ?? null;
