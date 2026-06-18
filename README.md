@@ -8,6 +8,21 @@ EcoRide est une application web de covoiturage conçue pour encourager les dépl
 
 URL de production : https://ecoride-guillaume.onrender.com
 
+## Comptes de test
+
+Tous les comptes de démonstration utilisent le même mot de passe : **`Test1234`**
+
+| Rôle         | Email                    | Mot de passe |
+|--------------|--------------------------|--------------|
+| Passager     | passager@ecoride.fr      | Test1234     |
+| Conducteur   | conducteur@ecoride.fr    | Test1234     |
+| Administrateur | admin@ecoride.fr       | Test1234     |
+
+> Les mots de passe sont stockés hachés (BCRYPT) en base. Le jeu de données de
+> démonstration (`sql/seed_demo_ecoride.sql`) crée des trajets datés du 10 au
+> 20 juillet 2026, afin que la recherche et les filtres renvoient des résultats
+> pendant la période d'évaluation.
+
 ## Installation locale
 
 ### Prérequis
@@ -15,6 +30,7 @@ URL de production : https://ecoride-guillaume.onrender.com
 - Serveur local : Laragon (recommandé), XAMPP ou WAMP
 - PHP : 8.1 ou version supérieure
 - MySQL : 5.7 ou version supérieure
+- Composer (pour les dépendances : PHPMailer, MongoDB, phpdotenv)
 - Git
 
 ### Étapes
@@ -25,122 +41,105 @@ git clone https://github.com/Guillaume555/ecoride.git
 cd ecoride
 ```
 
-2. Créer la base de données
-- Importer le fichier `sql/database_structure.sql`
-- Puis importer `sql/database_data.sql`
+2. Installer les dépendances PHP
+```bash
+composer install
+```
 
-3. Vérifier la configuration
-- Modifier les accès dans `config/database.php` si besoin :
-  - hôte : `localhost`
-  - base : `ecoride`
-  - utilisateur : `root`
-  - mot de passe : *(vide par défaut sur Laragon)*
+3. Créer la base de données
+- Importer la structure : `sql/database_structure.sql`
+- Importer le jeu de démonstration : `sql/seed_demo_ecoride.sql`
 
-4. Lancer le projet
+4. Configurer les variables d'environnement
+- Créer un fichier `.env` à la racine (voir variables ci-dessous)
+- En local sur Laragon, les valeurs par défaut conviennent généralement
+  (hôte `localhost`, base `ecoride`, utilisateur `root`, mot de passe vide)
+
+5. Lancer le projet
 - Démarrer Laragon ou équivalent
-- Accéder à l’adresse : http://localhost/ecoride
+- Accéder à l'adresse : http://localhost/ecoride
 
-## Comptes de test
+### Variables d'environnement (.env)
 
-- Passager : marie@email.com / password123
-- Conducteur : demo@driver.com / password123                //pas encores operationnelles
-- Administrateur : admin@ecoride.fr / password123           //pas encores operationnelles
+```
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=ecoride
+DB_USER=root
+DB_PASS=
+DB_SSL=false
+
+MONGO_URI=mongodb+srv://...        # MongoDB Atlas (logs d'activité)
+
+SMTP_HOST=smtp.gmail.com           # Envoi d'emails (PHPMailer)
+SMTP_PORT=587
+SMTP_USERNAME=...
+SMTP_PASSWORD=...
+```
+
+Le fichier `.env` ne doit jamais être versionné (il est listé dans `.gitignore`).
 
 ## Technologies utilisées
 
-- HTML, CSS, Bootstrap 5.3
-- JavaScript
-- PHP 8 avec PDO
-- MySQL
+- HTML5, CSS3, Bootstrap 5.3
+- JavaScript natif (validation, interactions, requêtes asynchrones)
+- PHP 8.1 (architecture orientée objet, PDO)
+- MySQL (données relationnelles)
+- MongoDB (logs d'activité, base NoSQL)
 - Apache
+- Docker (containerisation), Render.com (hébergement), Aiven (MySQL managé), MongoDB Atlas
 
 ## Structure du projet
 
 ```
 ecoride/
-├── index.php
-├── config/
-├── includes/
-├── pages/
-├──monhodb/
-├──docs
+├── index.php              # Point d'entrée et routeur
+├── config/               # Connexions BDD (MySQL, MongoDB), services
+├── classes/              # Classes POO (User, Trip, Vehicle, Admin)
+├── includes/             # header, navbar, footer, session, admin_guard
+├── pages/                # Pages de l'application
 ├── assets/
-│   └── css/
-    └── img/
-    └── js/
-├── sql/
+│   ├── css/
+│   ├── js/
+│   └── img/
+├── mongodb/              # Logs (fallback JSON local)
+├── docs/                 # Documentation (dont déploiement)
+├── sql/                  # Scripts SQL (structure + données de démo)
+├── Dockerfile
+└── composer.json
 ```
 
 ## Fonctionnalités principales
 
-- Authentification et création de compte avec attribution de crédits
-- Recherche de trajets avec filtres
-- Fiche détail d’un trajet
-- Réservation de trajets (simulation en cours)
-- Affichage des avis sur les conducteurs
-- Profil utilisateur et gestion des trajets passés
+- Authentification et création de compte avec attribution de crédits (20 à l'inscription)
+- Recherche de trajets avec filtres (prix maximum, type de véhicule)
+- Fiche détail d'un trajet
+- Réservation de trajets avec gestion automatique des crédits
+- Espace utilisateur (profil, mes trajets, mes véhicules)
+- Espace administrateur (tableau de bord, gestion utilisateurs / trajets / avis)
 - Mise en avant des véhicules électriques
-
-## Charte graphique
-
-- Couleur principale : #4B6B52
-- Couleur secondaire : #3d5943
-- Police : Inter
-- Icônes : Font Awesome
 
 ## Sécurité
 
-- Connexions sécurisées avec password_hash()
-- Requêtes SQL préparées (PDO)
-- Échappement des données avec htmlspecialchars()
-- Cookies sécurisés pour l’option "Se souvenir de moi"
+- Mots de passe hachés avec `password_hash()` / BCRYPT
+- Requêtes SQL préparées (PDO) pour prévenir les injections
+- Échappement des sorties avec `htmlspecialchars()` (protection XSS)
+- Sessions PHP sécurisées, HTTPS en production
+- Variables sensibles externalisées dans `.env` (jamais versionnées)
+
+## Workflow Git
+
+- Branche `main` : code stable
+- Branche `development` : fonctionnalités en cours
+
+## Charte graphique
+
+- Couleur principale : `#4B6B52`
+- Couleur secondaire : `#3d5943`
+- Police : Inter
+- Icônes : Font Awesome
 
 ## Notes
 
-Ce projet a été réalisé dans le cadre de l’évaluation ECF pour le Titre Professionnel Développeur Web et Web Mobile (2025).
-
-
-## 🏗️ Architecture POO (10 juillet 2025)
-
-### Structure des classes
-```
-/classes/
-├── User.php        - Gestion utilisateurs (auth, profil, crédits, admin)
-├── Trip.php        - Gestion trajets (CRUD, recherche, réservation, annulation)
-├── Vehicle.php     - Gestion véhicules (CRUD, validation, propriété)
-└── Admin.php       - Statistiques et tableaux de bord admin
-```
-
-### Utilisation des classes
-
-#### Exemple : Inscription utilisateur
-```php
-require_once 'config/database.php';
-
-$user = new User($pdo);
-$user->register('username', 'email@example.com', 'password123');
-```
-
-#### Exemple : Recherche de trajets
-```php
-$trips = Trip::search($pdo, 'Paris', 'Lyon', '2025-07-20');
-```
-
-#### Exemple : Réservation de trajet
-```php
-$trip = new Trip($pdo, $tripId);
-$bookingId = $trip->book($_SESSION['user_id'], 2); // 2 places
-```
-
-### Avantages de l'architecture POO
-
-✅ **Code réutilisable** : Les méthodes peuvent être utilisées partout  
-✅ **Maintenance facilitée** : Logique métier centralisée dans les classes  
-✅ **Sécurité renforcée** : Encapsulation + validation automatique  
-✅ **Transactions SQL** : Intégrité des données garantie  
-✅ **Tests unitaires** : Chaque méthode testable individuellement  
-
-### Méthodes disponibles
-
-Consulter les fichiers de classes pour la documentation complète de chaque méthode.
-Tous les commentaires sont en français et détaillent l'utilisation.
+Projet réalisé dans le cadre de l'évaluation ECF pour le Titre Professionnel
+Développeur Web et Web Mobile (RNCP37674).
