@@ -10,7 +10,7 @@
  * - Statistiques utilisateur (trips, ratings)
  * 
  * @author EcoRide - ECF DWWM 2025
- * @version 1.2 - Validation complète + messages d'erreur conviviaux
+ * @version 1.3 - Alignement sur la colonne is_active + correction getAverageRating
  */
 
 class User {
@@ -147,7 +147,9 @@ class User {
                 throw new Exception("Identifiants invalides.");
             }
             
-            if ($user['is_banned']) {
+            // CORRECTION : un compte suspendu correspond à is_active = 0
+            // (la table users ne possède pas de colonne is_banned)
+            if (isset($user['is_active']) && (int) $user['is_active'] === 0) {
                 throw new Exception("Votre compte a été suspendu. Contactez l'administrateur.");
             }
             
@@ -446,6 +448,7 @@ class User {
     
     /**
      * Bannir l'utilisateur (action admin)
+     * Un compte banni correspond à is_active = 0
      * 
      * @return bool True si bannissement réussi
      * @throws Exception Si erreur
@@ -456,9 +459,10 @@ class User {
         }
         
         try {
+            // CORRECTION : on utilise is_active (la colonne is_banned n'existe pas)
             $stmt = $this->pdo->prepare("
                 UPDATE users 
-                SET is_banned = 1
+                SET is_active = 0
                 WHERE id = :id
             ");
             $stmt->execute([':id' => $this->id]);
@@ -481,6 +485,7 @@ class User {
     
     /**
      * Débannir l'utilisateur (action admin)
+     * Réactive le compte : is_active = 1
      * 
      * @return bool True si débannissement réussi
      * @throws Exception Si erreur
@@ -491,9 +496,10 @@ class User {
         }
         
         try {
+            // CORRECTION : on utilise is_active (la colonne is_banned n'existe pas)
             $stmt = $this->pdo->prepare("
                 UPDATE users 
-                SET is_banned = 0
+                SET is_active = 1
                 WHERE id = :id
             ");
             $stmt->execute([':id' => $this->id]);
@@ -623,10 +629,12 @@ class User {
         }
         
         try {
+            // CORRECTION : colonnes réelles de la table reviews
+            // (reviewed_id et is_validated, et non reviewed_user_id / status)
             $stmt = $this->pdo->prepare("
                 SELECT AVG(rating) as avg_rating, COUNT(*) as total_reviews
                 FROM reviews
-                WHERE reviewed_user_id = :user_id AND status = 'validated'
+                WHERE reviewed_id = :user_id AND is_validated = 1
             ");
             $stmt->execute([':user_id' => $this->id]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
