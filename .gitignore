@@ -11,3 +11,4 @@ mongodb/user_logs.json
 mongodb/*.migrated_*
 phpinfo.php
 .vscode/
+test_connexion.php
