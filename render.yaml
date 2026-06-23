@@ -1,9 +1,43 @@
-# render.yaml
+# render.yaml - Configuration du déploiement sur Render
+# ---------------------------------------------------------------------
+# Service web unique, construit via Docker (Dockerfile à la racine).
+# Les valeurs des variables ne sont PAS écrites ici : "sync: false" indique
+# qu'elles sont saisies de façon sécurisée dans le dashboard Render
+# (onglet Environment), et ne sont donc jamais versionnées sur GitHub.
+# ---------------------------------------------------------------------
 services:
   - type: web
     name: ecoride
     env: docker
     dockerfilePath: ./Dockerfile
     envVars:
-      - key: DATABASE_URL
+      # Base de données MySQL (Aiven)
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_SSL
+        sync: false
+      # Base NoSQL des logs (MongoDB Atlas)
+      - key: MONGO_URI
+        sync: false
+      # Envoi d'emails (SMTP / PHPMailer)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      # Formulaire de contact
+      - key: CONTACT_EMAIL
+        sync: false
+      - key: CONTACT_FROM_NAME
         sync: false
