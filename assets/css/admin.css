@@ -1,0 +1,546 @@
+/**
+ * ========================================
+ * FICHIER : assets/css/admin.css
+ * ========================================
+ * 
+ * DESCRIPTION :
+ * Styles spécifiques pour l'espace administrateur EcoRide
+ * Complète les styles Bootstrap avec des éléments admin personnalisés
+ * 
+ * SECTIONS :
+ * 1. Layout général admin
+ * 2. Cartes statistiques (dashboard)
+ * 3. Tableaux de données
+ * 4. Boutons d'actions admin
+ * 5. Badges et labels
+ * 6. Sidebar navigation (optionnel)
+ * 7. Messages et alertes
+ * 8. Responsive mobile
+ * ========================================
+ */
+
+/* ========================================
+   1. LAYOUT GÉNÉRAL ADMIN
+   ======================================== */
+
+.admin-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.admin-header {
+    background: linear-gradient(135deg, #4B6B52 0%, #3d5943 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(75, 107, 82, 0.2);
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.admin-header .subtitle {
+    margin: 0.5rem 0 0 0;
+    opacity: 0.9;
+    font-size: 1rem;
+}
+
+/* Badge ADMIN dans navbar */
+.badge-admin {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* ========================================
+   2. CARTES STATISTIQUES (DASHBOARD)
+   ======================================== */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-left: 4px solid transparent;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card.primary {
+    border-left-color: #4B6B52;
+}
+
+.stat-card.success {
+    border-left-color: #28a745;
+}
+
+.stat-card.warning {
+    border-left-color: #ffc107;
+}
+
+.stat-card.danger {
+    border-left-color: #dc3545;
+}
+
+.stat-card .icon {
+    font-size: 2.5rem;
+    opacity: 0.8;
+    margin-bottom: 1rem;
+}
+
+.stat-card .icon.primary { color: #4B6B52; }
+.stat-card .icon.success { color: #28a745; }
+.stat-card .icon.warning { color: #ffc107; }
+.stat-card .icon.danger { color: #dc3545; }
+
+.stat-card .label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card .value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #333;
+    line-height: 1;
+}
+
+.stat-card .change {
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+.stat-card .change.positive {
+    color: #28a745;
+}
+
+.stat-card .change.negative {
+    color: #dc3545;
+}
+
+/* ========================================
+   3. TABLEAUX DE DONNÉES
+   ======================================== */
+
+.admin-table-container {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow-x: auto;
+}
+
+.admin-table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.admin-table thead {
+    background: #f8f9fa;
+}
+
+.admin-table thead th {
+    border-bottom: 2px solid #dee2e6;
+    padding: 1rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.admin-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.admin-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.admin-table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Colonnes spécifiques */
+.admin-table .col-id {
+    width: 60px;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.admin-table .col-status {
+    width: 120px;
+}
+
+.admin-table .col-actions {
+    min-width: 200px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.admin-table .btn-action {
+    display: inline-block;
+    margin: 2px;
+    padding: 0.35rem 0.6rem;
+}
+
+/* ========================================
+   4. BOUTONS D'ACTIONS ADMIN
+   ======================================== */
+
+.btn-action {
+    display: inline-block;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.85rem;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    margin: 2px 3px;
+    vertical-align: middle;
+}
+
+.btn-action i {
+    margin-right: 0.25rem;
+}
+
+.btn-edit {
+    background: #007bff;
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #0056b3;
+    transform: scale(1.05);
+}
+
+.btn-delete {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c82333;
+    transform: scale(1.05);
+}
+
+.btn-ban {
+    background: #ffc107;
+    color: #212529;
+}
+
+.btn-ban:hover {
+    background: #e0a800;
+    transform: scale(1.05);
+}
+
+.btn-view {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-view:hover {
+    background: #138496;
+    transform: scale(1.05);
+}
+
+.btn-validate {
+    background: #28a745;
+    color: white;
+}
+
+.btn-validate:hover {
+    background: #218838;
+    transform: scale(1.05);
+}
+
+/* ========================================
+   5. BADGES ET LABELS
+   ======================================== */
+
+.status-badge {
+    padding: 0.35rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-badge.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-badge.banned {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.pending {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.role-badge {
+    padding: 0.3rem 0.7rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.role-badge.admin {
+    background: #dc3545;
+    color: white;
+}
+
+.role-badge.driver {
+    background: #4B6B52;
+    color: white;
+}
+
+.role-badge.passenger {
+    background: #007bff;
+    color: white;
+}
+
+/* ========================================
+   6. SIDEBAR NAVIGATION (OPTIONNEL)
+   ======================================== */
+
+.admin-sidebar {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.admin-sidebar .nav-link {
+    color: #495057;
+    padding: 0.8rem 1rem;
+    border-radius: 5px;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+}
+
+.admin-sidebar .nav-link i {
+    margin-right: 0.75rem;
+    width: 20px;
+}
+
+.admin-sidebar .nav-link:hover {
+    background: #f8f9fa;
+    color: #4B6B52;
+    transform: translateX(5px);
+}
+
+.admin-sidebar .nav-link.active {
+    background: #4B6B52;
+    color: white;
+}
+
+/* ========================================
+   7. MESSAGES ET ALERTES
+   ======================================== */
+
+.admin-alert {
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.admin-alert.success {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
+.admin-alert.warning {
+    background: #fff3cd;
+    color: #856404;
+    border-left: 4px solid #ffc107;
+}
+
+.admin-alert.danger {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+}
+
+.admin-alert.info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border-left: 4px solid #17a2b8;
+}
+
+/* ========================================
+   8. FILTRES ET RECHERCHE
+   ======================================== */
+
+.admin-filters {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.admin-filters .form-control,
+.admin-filters .form-select {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.admin-filters .form-control:focus,
+.admin-filters .form-select:focus {
+    border-color: #4B6B52;
+    box-shadow: 0 0 0 0.2rem rgba(75, 107, 82, 0.25);
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+}
+
+.search-box input {
+    padding-left: 2.5rem;
+}
+
+/* ========================================
+   9. RESPONSIVE MOBILE
+   ======================================== */
+
+@media (max-width: 768px) {
+    .admin-container {
+        padding: 1rem 0.5rem;
+    }
+
+    .admin-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card .value {
+        font-size: 2rem;
+    }
+
+    .admin-table-container {
+        padding: 1rem;
+    }
+
+    .admin-table {
+        font-size: 0.875rem;
+    }
+
+    .admin-table thead th,
+    .admin-table tbody td {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .btn-action {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+        margin: 0.25rem 0;
+        display: block;
+        width: 100%;
+    }
+
+    .col-actions {
+        text-align: left !important;
+    }
+}
+
+/* ========================================
+   10. ANIMATIONS
+   ======================================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.admin-container > * {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* ========================================
+   11. UTILITAIRES
+   ======================================== */
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.font-weight-bold {
+    font-weight: 700 !important;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+
+.mt-4 {
+    margin-top: 1.5rem !important;
+}

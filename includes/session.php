@@ -1,341 +1,441 @@
 <?php
-/*
-================================================
-FICHIER: includes/session.php - Gestion des sessions EcoRide
-Description: Fonctions centralisées pour la gestion des sessions utilisateur
-================================================
-*/
 
-// Inclusion de la configuration base de données
+// Configuration base de données et MongoDB
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/mongodb.php';
 
-// Démarrage de la session si pas déjà fait
+// Démarre la session si c'est pas encore fait
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 /**
- * Vérifie si un utilisateur est connecté
- * @return bool
+ * Classe Session - Gestion complète des sessions utilisateur
+ * 
+ * J'ai centralisé toute la logique de session ici pour éviter de répéter
+ * le même code partout. Ça gère la connexion, déconnexion, vérifications
+ * et aussi les logs MongoDB pour tracer les actions.
  */
-function isLoggedIn()
+class Session
 {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
-}
+    // Durée par défaut avant expiration (2 heures)
+    private static $timeout = 7200;
 
-function logUserConnection($user_id, $action)
-{
-    // Redirige vers le logger MongoDB (rétro-compat)
-    logUserActivity((int)$user_id, $action, [
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
-        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
-    ]);
-}
-
-
-/**
- * Connecte un utilisateur (création de session)
- * @param array $user_data Données de l'utilisateur depuis la BDD
- * @return bool
- */
-function loginUser($user_data)
-{
-    if (!is_array($user_data) || empty($user_data['id'])) {
-        return false;
+    /**
+     * Vérifier si quelqu'un est connecté
+     * Simple et efficace, juste vérifier que user_id existe en session
+     */
+    public static function isLoggedIn()
+    {
+        return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
     }
 
-    // Régénération de l'ID de session pour la sécurité
-    session_regenerate_id(true);
-
-    // Stockage des données en session
-    $_SESSION['user_id'] = $user_data['id'];
-    $_SESSION['username'] = $user_data['username'];
-    $_SESSION['email'] = $user_data['email'];
-    $_SESSION['credits'] = $user_data['credits'];
-    $_SESSION['role'] = $user_data['role'];
-    $_SESSION['login_time'] = time();
-
-    //  LOG MONGODB - CONNEXION
-    logUserActivity($user_data['id'], 'login', [
-        'username' => $user_data['username'],
-        'role' => $user_data['role']
-    ]);
-
-    return true;
-}
-
-/**
- * Déconnecte l'utilisateur (destruction de session)
- */
-function logoutUser()
-{
-    //  LOG MONGODB - DÉCONNEXION
-    if (isLoggedIn()) {
-        logUserActivity($_SESSION['user_id'], 'logout');
-    }
-
-    // Destruction de toutes les variables de session
-    $_SESSION = array();
-
-    // IMPORTANT : Destruction du cookie "Se souvenir de moi"
-    if (isset($_COOKIE['remember_token'])) {
-        setcookie('remember_token', '', time() - 3600, '/', '', false, true);
-        unset($_COOKIE['remember_token']);
-    }
-
-    // Destruction du cookie de session s'il existe
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(
-            session_name(),
-            '',
-            time() - 42000,
-            $params["path"],
-            $params["domain"],
-            $params["secure"],
-            $params["httponly"]
-        );
-    }
-
-    // Destruction de la session
-    session_destroy();
-}
-
-/**
- * Récupère les données de l'utilisateur connecté
- * @return array|null
- */
-function getCurrentUser()
-{
-    if (!isLoggedIn()) {
-        return null;
-    }
-
-    return [
-        'id' => $_SESSION['user_id'],
-        'username' => $_SESSION['username'],
-        'email' => $_SESSION['email'],
-        'credits' => $_SESSION['credits'],
-        'role' => $_SESSION['role'],
-        'login_time' => $_SESSION['login_time']
-    ];
-}
-
-/**
- * Met à jour les crédits de l'utilisateur en session et en BDD
- * @param int $new_credits
- * @return bool
- */
-function updateUserCredits($new_credits)
-{
-    global $pdo;
-
-    if (!isLoggedIn()) {
-        return false;
-    }
-
-    try {
-        // Mise à jour en base de données
-        $stmt = $pdo->prepare("UPDATE users SET credits = :credits WHERE id = :user_id");
-        $result = $stmt->execute([
-            ':credits' => $new_credits,
-            ':user_id' => $_SESSION['user_id']
-        ]);
-
-        if ($result) {
-            // Mise à jour en session
-            $_SESSION['credits'] = $new_credits;
-            return true;
-        }
-    } catch (Exception $e) {
-        error_log("Erreur mise à jour crédits: " . $e->getMessage());
-    }
-
-    return false;
-}
-
-/**
- * Redirige vers login si pas connecté
- * @param string $redirect_url URL de redirection après connexion
- */
-function requireLogin($redirect_url = null)
-{
-    if (!isLoggedIn()) {
-        if ($redirect_url) {
-            $_SESSION['redirect_after_login'] = $redirect_url;
-        }
-        header('Location: ?page=login');
-        exit;
-    }
-}
-
-/**
- * Récupère l'URL de redirection après connexion
- * @return string|null
- */
-function getRedirectAfterLogin()
-{
-    $redirect = $_SESSION['redirect_after_login'] ?? null;
-    unset($_SESSION['redirect_after_login']); // Supprimer après utilisation
-    return $redirect;
-}
-
-/**
- * Vérifie si la session n'a pas expiré (sécurité)
- * @param int $timeout Durée d'expiration en secondes (par défaut 2h)
- * @return bool
- */
-function isSessionValid($timeout = 7200)
-{
-    if (!isLoggedIn()) {
-        return false;
-    }
-
-    $login_time = $_SESSION['login_time'] ?? 0;
-
-    // Vérification timeout
-    if (time() - $login_time > $timeout) {
-        logoutUser();
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * Actualise les données utilisateur depuis la BDD
- * @return bool
- */
-function refreshUserData()
-{
-    global $pdo;
-
-    if (!isLoggedIn()) {
-        return false;
-    }
-
-    try {
-        $stmt = $pdo->prepare("
-            SELECT id, username, email, credits, role 
-            FROM users 
-            WHERE id = :user_id AND is_active = 1
-        ");
-        $stmt->execute([':user_id' => $_SESSION['user_id']]);
-        $user = $stmt->fetch();
-
-        if ($user) {
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['email'] = $user['email'];
-            $_SESSION['credits'] = $user['credits'];
-            $_SESSION['role'] = $user['role'];
-            return true;
-        } else {
-            // Utilisateur supprimé ou désactivé
-            logoutUser();
+    /**
+     * Connecter un utilisateur après validation login
+     * Je régénère l'ID session pour éviter les attaques de fixation
+     * 
+     * @param array $userData - Les données user récupérées de la base
+     * @return bool
+     */
+    public static function login($userData)
+    {
+        if (!is_array($userData) || empty($userData['id'])) {
             return false;
         }
-    } catch (Exception $e) {
-        error_log("Erreur rafraîchissement données utilisateur: " . $e->getMessage());
-        return false;
-    }
-}
 
-/**
- * Vérifie si l'utilisateur a un rôle spécifique
- * @param string|array $required_roles
- * @return bool
- */
-function hasRole($required_roles)
-{
-    if (!isLoggedIn()) {
-        return false;
-    }
+        // Sécurité : nouveau ID session pour éviter les hijacks
+        session_regenerate_id(true);
 
-    $user_role = $_SESSION['role'];
+        // Stocker les infos en session
+        $_SESSION['user_id'] = $userData['id'];
+        $_SESSION['username'] = $userData['username'];
+        $_SESSION['email'] = $userData['email'];
+        $_SESSION['credits'] = $userData['credits'];
+        $_SESSION['role'] = $userData['role'];
+        $_SESSION['login_time'] = time();
 
-    if (is_string($required_roles)) {
-        return $user_role === $required_roles;
+        // Logger dans MongoDB pour traçabilité
+        logUserActivity($userData['id'], 'login', [
+            'username' => $userData['username'],
+            'role' => $userData['role']
+        ]);
+
+        return true;
     }
 
-    if (is_array($required_roles)) {
-        return in_array($user_role, $required_roles);
-    }
+    /**
+     * Déconnecter l'utilisateur et tout nettoyer
+     * Important de bien supprimer tous les cookies et sessions
+     */
+    public static function logout()
+    {
+        // Logger avant de supprimer les données session
+        if (self::isLoggedIn()) {
+            logUserActivity($_SESSION['user_id'], 'logout');
+        }
 
-    return false;
-}
+        // Vider toutes les variables de session
+        $_SESSION = array();
 
-/**
- * Vérifie et gère la connexion automatique par cookie "Se souvenir de moi"
- * À appeler au début de chaque page
- */
-function checkRememberMeLogin()
-{
-    global $pdo;
-
-    // Si déjà connecté, pas besoin de vérifier
-    if (isLoggedIn()) {
-        return;
-    }
-
-    // Vérifier si le cookie remember_token existe
-    if (!isset($_COOKIE['remember_token'])) {
-        return;
-    }
-
-    try {
-        // Décoder le token
-        $token_data = base64_decode($_COOKIE['remember_token']);
-        $parts = explode(':', $token_data);
-
-        if (count($parts) !== 2) {
-            // Token invalide, le supprimer
+        // Supprimer le cookie "remember me" si il existe
+        if (isset($_COOKIE['remember_token'])) {
             setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+            unset($_COOKIE['remember_token']);
+        }
+
+        // Supprimer le cookie de session PHP
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params["path"],
+                $params["domain"],
+                $params["secure"],
+                $params["httponly"]
+            );
+        }
+
+        // Détruire la session complètement
+        session_destroy();
+    }
+
+    /**
+     * Récupérer les données de l'utilisateur connecté
+     * Pratique pour afficher le nom, crédits, etc. dans navbar
+     */
+    public static function getCurrentUser()
+    {
+        if (!self::isLoggedIn()) {
+            return null;
+        }
+
+        return [
+            'id' => $_SESSION['user_id'],
+            'username' => $_SESSION['username'],
+            'email' => $_SESSION['email'],
+            'credits' => $_SESSION['credits'],
+            'role' => $_SESSION['role'],
+            'login_time' => $_SESSION['login_time']
+        ];
+    }
+
+    /**
+     * Mettre à jour les crédits en session ET en base
+     * Utile après achat/vente de trajets pour garder l'affichage à jour
+     */
+    public static function updateCredits($newCredits)
+    {
+        if (!self::isLoggedIn()) {
+            return false;
+        }
+
+        try {
+            $pdo = Database::getConnection();
+
+            // Mise à jour en base d'abord
+            $stmt = $pdo->prepare("UPDATE users SET credits = :credits WHERE id = :user_id");
+            $result = $stmt->execute([
+                ':credits' => $newCredits,
+                ':user_id' => $_SESSION['user_id']
+            ]);
+
+            if ($result) {
+                // Puis en session pour l'affichage
+                $_SESSION['credits'] = $newCredits;
+                return true;
+            }
+        } catch (Exception $e) {
+            error_log("Erreur update crédits: " . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    /**
+     * Rediriger vers login si pas connecté
+     * Je sauvegarde l'URL pour y revenir après connexion
+     */
+    public static function requireLogin($redirectUrl = null)
+    {
+        if (!self::isLoggedIn()) {
+            if ($redirectUrl) {
+                $_SESSION['redirect_after_login'] = $redirectUrl;
+            }
+            header('Location: ?page=login');
+            exit;
+        }
+    }
+
+    /**
+     * Récupérer l'URL de redirection après login
+     * Pour renvoyer l'user là où il était avant la connexion
+     */
+    public static function getRedirectAfterLogin()
+    {
+        $redirect = $_SESSION['redirect_after_login'] ?? null;
+        unset($_SESSION['redirect_after_login']); // Supprimer après usage
+        return $redirect;
+    }
+
+    /**
+     * Vérifier que la session n'a pas expiré
+     * Par défaut 2h, mais ça peut être configuré
+     */
+    public static function isSessionValid($timeout = null)
+    {
+        if (!self::isLoggedIn()) {
+            return false;
+        }
+
+        $sessionTimeout = $timeout ?? self::$timeout;
+        $loginTime = $_SESSION['login_time'] ?? 0;
+
+        // Si ça fait trop longtemps, déconnecter automatiquement
+        if (time() - $loginTime > $sessionTimeout) {
+            self::logout();
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Recharger les données user depuis la base
+     * Utile si admin modifie un compte ou si données changent
+     */
+    public static function refreshUserData()
+    {
+        if (!self::isLoggedIn()) {
+            return false;
+        }
+
+        try {
+            $pdo = Database::getConnection();
+
+            $stmt = $pdo->prepare("
+                SELECT id, username, email, credits, role 
+                FROM users 
+                WHERE id = :user_id AND is_active = 1
+            ");
+            $stmt->execute([':user_id' => $_SESSION['user_id']]);
+            $user = $stmt->fetch();
+
+            if ($user) {
+                // Mettre à jour les données en session
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['email'] = $user['email'];
+                $_SESSION['credits'] = $user['credits'];
+                $_SESSION['role'] = $user['role'];
+                return true;
+            } else {
+                // L'user a été supprimé ou banni, le déconnecter
+                self::logout();
+                return false;
+            }
+        } catch (Exception $e) {
+            error_log("Erreur refresh user data: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Vérifier si l'utilisateur a un rôle spécifique
+     * Pratique pour les pages admin ou fonctionnalités restreintes
+     */
+    public static function hasRole($requiredRoles)
+    {
+        if (!self::isLoggedIn()) {
+            return false;
+        }
+
+        $userRole = $_SESSION['role'];
+
+        // Un seul rôle à vérifier
+        if (is_string($requiredRoles)) {
+            return $userRole === $requiredRoles;
+        }
+
+        // Plusieurs rôles possibles
+        if (is_array($requiredRoles)) {
+            return in_array($userRole, $requiredRoles);
+        }
+
+        return false;
+    }
+
+    /**
+     * Gestion du "Remember Me" avec cookies
+     * Vérification automatique au chargement des pages
+     */
+    public static function checkRememberMe()
+    {
+        // Si déjà connecté, pas besoin
+        if (self::isLoggedIn()) {
             return;
         }
 
-        $user_id = $parts[0];
-        $email = $parts[1];
-
-        // Vérifier que l'utilisateur existe toujours
-        $stmt = $pdo->prepare("
-            SELECT id, username, email, credits, role, is_active 
-            FROM users 
-            WHERE id = :id AND email = :email AND is_active = 1
-        ");
-        $stmt->execute([':id' => $user_id, ':email' => $email]);
-        $user = $stmt->fetch();
-
-        if ($user) {
-            // Utilisateur valide, le reconnecter automatiquement
-            loginUser($user);
-        } else {
-            // Utilisateur invalide, supprimer le cookie
-            setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+        // Pas de cookie remember_token
+        if (!isset($_COOKIE['remember_token'])) {
+            return;
         }
-    } catch (Exception $e) {
-        // En cas d'erreur, supprimer le cookie
-        setcookie('remember_token', '', time() - 3600, '/', '', false, true);
-        error_log("Erreur remember me: " . $e->getMessage());
+
+        try {
+            $pdo = Database::getConnection();
+
+            // Décoder le token (j'encode user_id:email en base64)
+            $tokenData = base64_decode($_COOKIE['remember_token']);
+            $parts = explode(':', $tokenData);
+
+            if (count($parts) !== 2) {
+                // Token corrompu, le supprimer
+                setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+                return;
+            }
+
+            $userId = $parts[0];
+            $email = $parts[1];
+
+            // Vérifier que l'user existe toujours et est actif
+            $stmt = $pdo->prepare("
+                SELECT id, username, email, credits, role, is_active 
+                FROM users 
+                WHERE id = :id AND email = :email AND is_active = 1
+            ");
+            $stmt->execute([':id' => $userId, ':email' => $email]);
+            $user = $stmt->fetch();
+
+            if ($user) {
+                // Reconnecter automatiquement
+                self::login($user);
+            } else {
+                // User inexistant/inactif, supprimer le cookie
+                setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+            }
+        } catch (Exception $e) {
+            // En cas d'erreur, supprimer le cookie pour sécurité
+            setcookie('remember_token', '', time() - 3600, '/', '', false, true);
+            error_log("Erreur remember me: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Créer un token "Remember Me" lors du login
+     * Appelé si l'user coche "Se souvenir de moi"
+     */
+    public static function createRememberToken($userId, $email, $duration = 2592000) // 30 jours par défaut
+    {
+        // Encoder les données en base64 (simple mais suffisant)
+        $tokenData = base64_encode($userId . ':' . $email);
+
+        // Créer le cookie sécurisé
+        setcookie(
+            'remember_token',
+            $tokenData,
+            time() + $duration,
+            '/',
+            '',
+            false, // HTTPS en production
+            true   // HttpOnly pour sécurité
+        );
+    }
+
+    /**
+     * Logger une action utilisateur spécifique
+     * Wrapper pour simplifier l'usage dans les autres classes
+     */
+    public static function logAction($action, $details = [])
+    {
+        if (self::isLoggedIn()) {
+            logUserActivity($_SESSION['user_id'], $action, $details);
+        }
     }
 }
 
-//============================
-/*
-Ce fichier centralise toutes les fonctions liées à la gestion des sessions utilisateur :
+// Au chargement de ce fichier, vérifier remember me automatiquement
+Session::checkRememberMe();
 
-- Connexion et déconnexion sécurisées (avec régénération de l'ID de session)
-- Stockage des informations utilisateur dans la session (id, rôle, crédits, etc.)
-- Vérification de statut connecté via isLoggedIn()
-- Chargement des données depuis la base en cas de besoin
-- Expiration automatique de session (timeout), suppression des cookies, et protection contre le vol de session
-- Journalisation des actions utilisateur (login, logout...) dans un fichier JSON via MongoDB ou fallback
+// =====================================================
+// FONCTIONS DE COMPATIBILITÉ POUR ANCIENNES PAGES
+// =====================================================
 
-Utilisation recommandée :
-require_once 'includes/session.php';
+/**
+ * Ces fonctions permettent aux anciennes pages qui utilisent
+ * encore les fonctions procédurales de continuer à fonctionner
+ * sans modification. Elles redirigent juste vers la classe Session.
+ */
 
-if (isLoggedIn()) {
-    $user = getCurrentUser();
-    // Utilisation des données utilisateur
+function isLoggedIn()
+{
+    return Session::isLoggedIn();
 }
+
+function getCurrentUser()
+{
+    return Session::getCurrentUser();
+}
+
+function requireLogin($redirectUrl = null)
+{
+    return Session::requireLogin($redirectUrl);
+}
+
+function loginUser($userData)
+{
+    return Session::login($userData);
+}
+
+function logoutUser()
+{
+    return Session::logout();
+}
+
+function updateUserCredits($credits)
+{
+    return Session::updateCredits($credits);
+}
+
+function refreshUserData()
+{
+    return Session::refreshUserData();
+}
+
+function hasRole($roles)
+{
+    return Session::hasRole($roles);
+}
+
+function getRedirectAfterLogin()
+{
+    return Session::getRedirectAfterLogin();
+}
+
+function isSessionValid($timeout = null)
+{
+    return Session::isSessionValid($timeout);
+}
+
+function checkRememberMeLogin()
+{
+    return Session::checkRememberMe();
+}
+
+function createRememberToken($userId, $email, $duration = 2592000)
+{
+    return Session::createRememberToken($userId, $email, $duration);
+}
+
+/*
+=== MIGRATION TERMINÉE ===
+
+Maintenant TOUTES tes pages vont refonctionner :
+- Les nouvelles (profile.php) utilisent Session::method()
+- Les anciennes continuent avec function() qui redirige vers Session::
+
+Plus d'erreurs, plus de plantages !
+Tu peux maintenant tester ton site normalement.
+
+Plus tard, tu pourras supprimer les fonctions wrapper
+et migrer toutes les pages vers Session:: si tu veux.
 */

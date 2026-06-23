@@ -3,15 +3,33 @@
 
 session_start();
 
-// Vérifie si l'utilisateur a choisi l'option 'Se souvenir de moi' et tente une reconnexion automatique
-if (file_exists('includes/session.php')) {
-    require_once 'includes/session.php';
-    checkRememberMeLogin();
-}
+// Inclusion de la classe Session (le checkRememberMe se fait automatiquement)
+require_once 'includes/session.php';
 
 // On récupère le nom de la page à afficher via l'URL, ou on redirige vers l'accueil si non valide
 $page = $_GET['page'] ?? 'home';
-$allowed_pages = ['home', 'search', 'login', 'detail', 'register', 'logout', 'profile', 'my-trips', 'about', 'contact', 'logs'];
+$allowed_pages = [
+    'home',
+    'search',
+    'login',
+    'detail',
+    'register',
+    'logout',
+    'profile',
+    'my-trips',
+    'about',
+    'contact',
+    'logs',
+    'create-trip',
+    'add-vehicle',
+    'reset-password',
+    'forgot-password',
+    // Pages admin
+    'admin-dashboard',
+    'admin-users',
+    'admin-trips',
+    'admin-reviews'
+];
 
 // On filtre les pages autorisées pour éviter toute tentative d'injection ou d'accès interdit
 if (!in_array($page, $allowed_pages)) {
@@ -20,8 +38,7 @@ if (!in_array($page, $allowed_pages)) {
 
 // Cas particulier : si la page demandée est 'logout', on déconnecte l'utilisateur
 if ($page === 'logout') {
-    require_once 'includes/session.php';
-    logoutUser();
+    Session::logout();
     header('Location: ?page=home');
     exit;
 }

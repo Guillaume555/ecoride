@@ -1,0 +1,71 @@
+# =====================================================================
+# compose.yaml - Environnement de DÉVELOPPEMENT local pour EcoRide
+# ---------------------------------------------------------------------
+# Permet de lancer toute l'application en local avec une seule commande :
+#
+#     docker compose up --build
+#
+# Deux conteneurs sont orchestrés ensemble :
+#   - web : l'application PHP/Apache (construite à partir du Dockerfile)
+#   - db  : une base MySQL locale, pré-remplie avec les scripts SQL du projet
+#
+# IMPORTANT (à savoir pour l'expliquer) :
+#   Ce fichier sert UNIQUEMENT au développement local.
+#   En PRODUCTION, l'application tourne sur Render (qui lit le Dockerfile),
+#   avec une base MySQL hébergée sur Aiven et MongoDB sur Atlas.
+#   Docker Compose n'est donc pas utilisé en production : il sert à recréer
+#   un environnement de dev complet (appli + base) sur n'importe quelle machine.
+# =====================================================================
+
+services:
+
+  # -------------------------------------------------------------------
+  # Service "web" : l'application EcoRide (PHP 8.1 + Apache)
+  # -------------------------------------------------------------------
+  web:
+    build: .                      # Construit l'image depuis le Dockerfile du projet
+    ports:
+      - "8080:10000"              # http://localhost:8080 -> port Apache interne (10000)
+    environment:
+      # Connexion à la base MySQL locale (le service "db" ci-dessous).
+      # Ces variables sont celles lues par config/database.php.
+      DB_HOST: db                 # On cible le service "db" par son nom
+      DB_PORT: "3306"
+      DB_NAME: ecoride
+      DB_USER: root
+      DB_PASS: rootpassword
+      DB_SSL: "false"             # Pas de SSL en local (contrairement à Aiven)
+      # MONGO_URI et SMTP_* peuvent être ajoutés ici si on veut tester
+      # les logs MongoDB ou l'envoi d'emails en local (optionnel).
+    depends_on:
+      db:
+        condition: service_healthy  # Attend que MySQL soit prêt avant de démarrer
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------
+  # Service "db" : base de données MySQL locale
+  # -------------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ecoride       # Base créée automatiquement au démarrage
+    ports:
+      - "3307:3306"                 # Accès direct depuis l'hôte (ex. DBeaver) sur le port 3307
+    volumes:
+      - db_data:/var/lib/mysql      # Volume nommé : les données survivent aux redémarrages
+      # Scripts exécutés AUTOMATIQUEMENT au tout premier démarrage, dans l'ordre
+      # alphabétique. Les préfixes 01_ et 02_ garantissent : structure PUIS données.
+      - ./sql/database_structure.sql:/docker-entrypoint-initdb.d/01_structure.sql:ro
+      - ./sql/seed_demo_ecoride.sql:/docker-entrypoint-initdb.d/02_data.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+# ---------------------------------------------------------------------
+# Volume nommé pour la persistance des données MySQL
+# ---------------------------------------------------------------------
+volumes:
+  db_data:

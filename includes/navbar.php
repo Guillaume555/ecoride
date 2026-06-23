@@ -1,6 +1,6 @@
 <?php
-// ========== NAVBAR PRINCIPALE ECORIDE ==========
-// Fichier : includes/navbar.php
+// Inclusion de la classe Session
+require_once __DIR__ . '/session.php';
 
 // Déterminer la page active pour le style
 $current_page = $_GET['page'] ?? 'home';
@@ -16,7 +16,7 @@ $current_page = $_GET['page'] ?? 'home';
         </a>
 
         <!-- Bouton hamburger mobile -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
 
@@ -45,35 +45,65 @@ $current_page = $_GET['page'] ?? 'home';
                 </li>
             </ul>
 
-            <!-- MODIFICATION À APPORTER DANS includes/navbar.php -->
-            <!-- Remplacer la section utilisateur connecté par : -->
+            <!-- Menu utilisateur -->
+            <?php if (Session::isLoggedIn()): ?>
+                <?php
+                $user = Session::getCurrentUser();
+                $isAdmin = Session::hasRole('admin');
+                ?>
 
-            <?php if (isLoggedIn()): ?>
-                <!-- Utilisateur connecté -->
                 <div class="navbar-nav ms-auto">
-                    <!-- Dropdown menu utilisateur -->
                     <div class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user-circle"></i>
-                            <?= getCurrentUser()['username'] ?>
-                            <span class="badge bg-success ms-1"><?= getCurrentUser()['credits'] ?> crédits</span>
+                            <?= htmlspecialchars($user['username']) ?>
+                            <span class="badge bg-success ms-1"><?= $user['credits'] ?> crédits</span>
+
+                            <?php if ($isAdmin): ?>
+                                <span class="badge bg-danger ms-1">ADMIN</span>
+                            <?php endif; ?>
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="?page=profile">
-                                    <i class="fas fa-user"></i> Mon profil
-                                </a></li>
-                            <li><a class="dropdown-item" href="?page=my-trips">
-                                    <i class="fas fa-route"></i> Mes trajets
-                                </a></li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            <li><a class="dropdown-item" href="?page=search">
-                                    <i class="fas fa-search"></i> Rechercher un trajet
-                                </a></li>
-                            <li><a class="dropdown-item" href="?page=create-trip">
-                                    <i class="fas fa-plus"></i> Proposer un trajet
-                                </a></li>
+
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <?php if ($isAdmin): ?>
+                                <!-- Menu Admin -->
+                                <li><a class="dropdown-item fw-bold text-danger" href="?page=admin-dashboard">
+                                        <i class="fas fa-chart-line"></i> Tableau de bord Admin
+                                    </a></li>
+                                <li><a class="dropdown-item" href="?page=admin-users">
+                                        <i class="fas fa-users"></i> Gestion utilisateurs
+                                    </a></li>
+                                <li><a class="dropdown-item" href="?page=admin-trips">
+                                        <i class="fas fa-car"></i> Gestion trajets
+                                    </a></li>
+                                <li><a class="dropdown-item" href="?page=admin-reviews">
+                                        <i class="fas fa-star"></i> Modération avis
+                                    </a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item" href="?page=home">
+                                        <i class="fas fa-arrow-left"></i> Retour au site
+                                    </a></li>
+                            <?php else: ?>
+                                <!-- Menu Utilisateur Normal -->
+                                <li><a class="dropdown-item" href="?page=profile">
+                                        <i class="fas fa-user"></i> Mon profil
+                                    </a></li>
+                                <li><a class="dropdown-item" href="?page=my-trips">
+                                        <i class="fas fa-route"></i> Mes trajets
+                                    </a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item" href="?page=search">
+                                        <i class="fas fa-search"></i> Rechercher un trajet
+                                    </a></li>
+                                <li><a class="dropdown-item" href="?page=create-trip">
+                                        <i class="fas fa-plus"></i> Proposer un trajet
+                                    </a></li>
+                            <?php endif; ?>
+
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
@@ -83,6 +113,7 @@ $current_page = $_GET['page'] ?? 'home';
                         </ul>
                     </div>
                 </div>
+
             <?php else: ?>
                 <!-- Visiteur -->
                 <div class="navbar-nav ms-auto">
@@ -100,15 +131,21 @@ $current_page = $_GET['page'] ?? 'home';
 
 <?php
 /*
-Fichier utilisé pour afficher une barre de navigation responsive.
+=== CHANGEMENTS APPORTÉS ===
 
-Fonctionnalités :
-- Affiche les liens principaux du site (Accueil, Covoiturages, etc.)
-- Adapte l’affichage selon que l’utilisateur est connecté ou non :
-  - S’il est connecté : affichage du pseudo, du nombre de crédits et d’un menu déroulant
-  - Sinon : boutons Connexion / Inscription
-- Le lien actif est mis en surbrillance automatiquement selon la page en cours
+1. Ajout de require_once pour la classe Session
+2. Session::isLoggedIn() au lieu de isLoggedIn()
+3. Session::getCurrentUser() au lieu de getCurrentUser()
+4. Session::hasRole('admin') au lieu de vérifier $_SESSION['role']
 
-Ce fichier est chargé dans toutes les pages via index.php.
+=== AVANTAGES ===
+
+- Code plus propre et organisé
+- Méthodes centralisées dans la classe Session
+- Plus de logique dispersée dans la navbar
+- Facilite les modifications futures
+
+Le reste du code reste identique, juste les appels aux fonctions
+qui changent pour utiliser la classe Session.
 */
 ?>

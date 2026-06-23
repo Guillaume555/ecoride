@@ -54,5 +54,35 @@
         "timestamp": "2025-07-22 07:20:07",
         "ip": "::1",
         "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36"
+    },
+    {
+        "id": "68f576383fdc59.06701856",
+        "user_id": 9,
+        "action": "logout",
+        "details": [],
+        "timestamp": "2025-10-19 23:37:28",
+        "ip": "::1",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/137.0.0.0 Safari\/537.36 OPR\/121.0.0.0"
+    },
+    {
+        "id": "68f5765e54d9c1.87766937",
+        "user_id": 7,
+        "action": "login",
+        "details": {
+            "username": "Guillaume_5",
+            "role": "passenger"
+        },
+        "timestamp": "2025-10-19 23:38:06",
+        "ip": "::1",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/137.0.0.0 Safari\/537.36 OPR\/121.0.0.0"
+    },
+    {
+        "id": "68f57662985c98.13371821",
+        "user_id": 7,
+        "action": "logout",
+        "details": [],
+        "timestamp": "2025-10-19 23:38:10",
+        "ip": "::1",
+        "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/137.0.0.0 Safari\/537.36 OPR\/121.0.0.0"
     }
 ]

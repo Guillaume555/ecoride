@@ -19,13 +19,30 @@ document.addEventListener("DOMContentLoaded", function () {
   const totalPriceElement = document.getElementById("total-price");
 
   if (seatsSelect && totalPriceElement) {
-    const pricePerSeat = parseFloat(seatsSelect.dataset.pricePerSeat || 25);
+    // Récupération du prix par place depuis l'attribut data
+    const pricePerSeat = parseFloat(seatsSelect.dataset.pricePerSeat || 0);
+    
+    // 🐛 DEBUG : afficher ce qui est récupéré
+    console.log("Prix par place récupéré :", pricePerSeat);
+    console.log("Attribut data-price-per-seat :", seatsSelect.dataset.pricePerSeat);
 
-    seatsSelect.addEventListener("change", function () {
-      const seats = parseInt(this.value);
+    // Fonction de calcul du total
+    function updateTotalPrice() {
+      const seats = parseInt(seatsSelect.value);
       const total = seats * pricePerSeat;
-      totalPriceElement.textContent = total + "€";
-    });
+      
+      // 🐛 DEBUG : afficher le calcul
+      console.log(`Calcul : ${seats} places × ${pricePerSeat}€ = ${total}€`);
+      
+      // Afficher avec 2 décimales (ou 0 si entier)
+      totalPriceElement.textContent = total % 1 === 0 ? total + "€" : total.toFixed(2) + "€";
+    }
+
+    // ✅ CORRECTION : initialiser le prix dès le chargement
+    updateTotalPrice();
+
+    // Mettre à jour quand on change le nombre de places
+    seatsSelect.addEventListener("change", updateTotalPrice);
   } else {
     console.warn("⚠️ Élément manquant : #seats ou #total-price introuvable.");
   }

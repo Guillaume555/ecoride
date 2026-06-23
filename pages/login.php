@@ -1,18 +1,20 @@
 <?php
-/* ================================================
+/*
+================================================
 FICHIER: pages/login.php - Page de connexion EcoRide
 Description: Formulaire de connexion avec validation sécurisée
-================================================ */
+================================================
+*/
 
-// Inclusion des fonctions de session
+// Inclusion des fonctions de session et classes POO
 require_once 'includes/session.php';
 require_once 'config/database.php';
+require_once 'classes/User.php';
 
 // Configuration de la page
 $page_title = "EcoRide - Connexion";
 $extra_css = ['auth.css'];
-$extra_js = ['login.js']; //Js spécifique a la page
-
+$extra_js = ['login.js'];
 
 // Si l'utilisateur est déjà connecté, redirection
 if (isLoggedIn()) {
@@ -38,74 +40,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $remember_me = isset($_POST['remember_me']);
 
-    // ========== VALIDATION DES DONNÉES ==========
-
-    // Validation de l'email
+    // Validation basique des champs obligatoires
     if (empty($email)) {
         $errors['email'] = "L'email est obligatoire.";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors['email'] = "Format d'email invalide.";
     }
 
-    // Validation du mot de passe
     if (empty($password)) {
         $errors['password'] = "Le mot de passe est obligatoire.";
     }
 
-    // ========== VÉRIFICATION CONNEXION ==========
-
+    // Authentification POO
     if (empty($errors)) {
         try {
-            // Recherche de l'utilisateur par email
-            $stmt = $pdo->prepare("
-                SELECT id, username, email, password, credits, role, is_active 
-                FROM users 
-                WHERE email = :email
-            ");
-            $stmt->execute([':email' => $email]);
-            $user = $stmt->fetch();
+            $user = new User($pdo);
+            $userData = $user->login($email, $password);
 
-            if ($user) {
-                // Vérification que le compte est actif
-                if (!$user['is_active']) {
-                    $errors['general'] = "Votre compte a été désactivé. Contactez l'administrateur.";
-                }
-                // Vérification du mot de passe
-                elseif (password_verify($password, $user['password'])) {
-                    // Connexion réussie !
-                    loginUser($user);
-
-                    // Gestion "Se souvenir de moi" (bonus)
-                    if ($remember_me) {
-                        // Cookie sécurisé pour 30 jours
-                        setcookie(
-                            'remember_token',
-                            base64_encode($user['id'] . ':' . $user['email']),
-                            time() + (30 * 24 * 60 * 60),
-                            '/',
-                            '',
-                            false,
-                            true
-                        );
-                    }
-
-                    // Redirection intelligente
-                    $redirect_url = getRedirectAfterLogin();
-                    if ($redirect_url) {
-                        header('Location: ' . $redirect_url);
-                    } else {
-                        header('Location: ?page=home');
-                    }
-                    exit;
-                } else {
-                    $errors['password'] = "Mot de passe incorrect.";
-                }
-            } else {
-                $errors['email'] = "Aucun compte trouvé avec cette adresse email.";
+            // Gestion "Se souvenir de moi"
+            if ($remember_me) {
+                setcookie(
+                    'remember_token',
+                    base64_encode($userData['id'] . ':' . $userData['email']),
+                    time() + (30 * 24 * 60 * 60),
+                    '/',
+                    '',
+                    false,
+                    true
+                );
             }
+
+            // Redirection intelligente
+            $redirect_url = getRedirectAfterLogin();
+            if ($redirect_url) {
+                header('Location: ' . $redirect_url);
+            } else {
+                header('Location: ?page=home');
+            }
+            exit;
         } catch (Exception $e) {
-            $errors['general'] = "Erreur lors de la connexion. Veuillez réessayer.";
-            // En production : error_log($e->getMessage());
+            $errors['general'] = $e->getMessage();
         }
     }
 }
@@ -186,32 +160,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <i class="fas fa-eye" id="eyeIcon"></i>
                                 </button>
                             </div>
-
-                            <!-- SE SOUVENIR DE MOI -->
-                            <div class="mb-4">
-                                <div class="form-check">
-                                    <input class="form-check-input"
-                                        type="checkbox"
-                                        id="remember_me"
-                                        name="remember_me">
-                                    <label class="form-check-label" for="remember_me">
-                                        Se souvenir de moi (30 jours)
-                                    </label>
+                            <?php if (isset($errors['password'])): ?>
+                                <div class="invalid-feedback">
+                                    <?= htmlspecialchars($errors['password']) ?>
                                 </div>
-                            </div>
+                            <?php endif; ?>
+                        </div>
 
-                            <!-- BOUTON CONNEXION -->
-                            <button type="submit" class="btn btn-success btn-lg w-100 mb-3">
-                                <i class="fas fa-sign-in-alt"></i>
-                                Se connecter
-                            </button>
-
-                            <!-- LIENS UTILES -->
-                            <div class="text-center">
-                                <small class="text-muted">
-                                    <a href="#" class="auth-link">Mot de passe oublié ?</a>
-                                </small>
+                        <!-- SE SOUVENIR DE MOI -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                    type="checkbox"
+                                    id="remember_me"
+                                    name="remember_me">
+                                <label class="form-check-label" for="remember_me">
+                                    Se souvenir de moi (30 jours)
+                                </label>
                             </div>
+                        </div>
+
+                        <!-- BOUTON CONNEXION -->
+                        <button type="submit" class="btn btn-success btn-lg w-100 mb-3">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Se connecter
+                        </button>
+
+                        <!-- MOTS DE PASSE OUBLIÉ -->
+                        <div class="text-center">
+                            <small class="text-muted">
+                                <a href="?page=forgot-password" class="auth-link">
+                                    <i class="fas fa-key"></i> Mot de passe oublié ?
+                                </a>
+                            </small>
+                        </div>
 
                     </form>
 
@@ -256,28 +238,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <?php
 /*
-Résumé du fichier : page de connexion utilisateur
+================================================
+FONCTIONNEMENT DU FICHIER LOGIN.PHP
 
-Fonction principale :
-Affiche un formulaire de connexion sécurisé, avec gestion du message d’erreur et des redirections après login.
+Ce fichier gère l'authentification des utilisateurs sur EcoRide.
 
-Éléments traités :
-- Validation email/mot de passe avec password_verify()
-- Vérification de l’activation du compte
-- Connexion persistante via cookie sécurisé si "se souvenir de moi"
-- Redirection vers la page précédente ou d’accueil après succès
-- Affichage des messages d’erreur clairs
-- Pré-remplissage de l’email en cas d’échec
+LOGIQUE PRINCIPALE :
+1. Validation basique des champs email et mot de passe
+2. Utilisation de la classe User pour l'authentification sécurisée
+3. Gestion des sessions et cookies "se souvenir de moi"
+4. Redirection intelligente après connexion réussie
 
-Sécurité :
-- Échappement des entrées utilisateur
-- Cookies HttpOnly
-- Validation côté serveur
-- Protection contre les attaques temporelles
+SÉCURITÉ IMPLÉMENTÉE :
+- Validation email côté serveur
+- Authentification via classe POO (encapsulation)
+- Gestion des exceptions pour erreurs claires
+- Cookies sécurisés HttpOnly pour "remember me"
+- Protection CSRF via méthode POST
 
-Connexion à l’écosystème :
-- Utilise `includes/session.php`
-- Compatible avec le router de l'application
-- Prêt pour intégrer le CSS `auth.css` si présent
+INTÉGRATION SYSTÈME :
+- Compatible avec includes/session.php (helpers existants)
+- Utilise classes/User.php pour logique métier
+- Responsive Bootstrap pour interface utilisateur
+- Messages d'erreur contextuels et visuels
+
+FLUX UTILISATEUR :
+Formulaire → Validation → User::login() → Session → Redirection
+En cas d'erreur : Affichage message + conservation email saisi
+================================================
 */
 ?>
