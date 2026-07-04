@@ -2,7 +2,10 @@
 /*
 ================================================
 FICHIER: pages/search.php - Page de recherche EcoRide (VERSION POO)
-Description: Page de recherche et affichage des trajets de covoiturage
+Description: Page de recherche et affichage des trajets de covoiturage.
+             Les filtres (prix, énergie) sont appliqués de façon asynchrone
+             via search-trip.js, sans rechargement de la page. Le formulaire
+             reste fonctionnel sans JavaScript. (amelioration en cours)
 ================================================
 */
 
@@ -37,7 +40,7 @@ if (!empty($depart) && !empty($arrivee)) {
         // Recherche de base avec Trip::search()
         $trips = Trip::search($pdo, $depart, $arrivee, $date);
 
-        // Application des filtres via PHP (pour l'instant, peut être optimisé en SQL plus tard)
+        // Application des filtres via PHP (premier affichage, sans JavaScript)
         if (!empty($max_price)) {
             $trips = array_filter($trips, function ($trip) use ($max_price) {
                 return floatval($trip['price_per_seat']) <= floatval($max_price);
@@ -141,14 +144,13 @@ if (!empty($depart) && !empty($arrivee)) {
                             <i class="fas fa-filter"></i> Filtrer les résultats
                         </h4>
 
-                        <?php if ($nombre_resultats > 0): ?>
-                            <div class="filtres-info">
-                                <?= $nombre_resultats ?> trajet<?= $nombre_resultats > 1 ? 's' : '' ?> trouvé<?= $nombre_resultats > 1 ? 's' : '' ?>
-                            </div>
-                        <?php endif; ?>
+                        <!-- Compteur (mis à jour dynamiquement par search-trip.js) -->
+                        <div class="filtres-info" id="filtres-info">
+                            <?= $nombre_resultats ?> trajet<?= $nombre_resultats > 1 ? 's' : '' ?> trouvé<?= $nombre_resultats > 1 ? 's' : '' ?>
+                        </div>
 
                         <!-- FORMULAIRE DES FILTRES -->
-                        <form method="GET" action="?" class="filtres-form">
+                        <form method="GET" action="?" class="filtres-form" id="filtres-form">
                             <!-- Conservation des paramètres de recherche -->
                             <input type="hidden" name="page" value="search">
                             <input type="hidden" name="depart" value="<?= htmlspecialchars($depart) ?>">
@@ -212,164 +214,168 @@ if (!empty($depart) && !empty($arrivee)) {
                             <?php endif; ?>
                         </h2>
 
-                        <?php if (!empty($max_price) || !empty($fuel_type)): ?>
-                            <div class="filtres-actifs">
+                        <!-- Rappel des filtres actifs (mis à jour dynamiquement) -->
+                        <div class="filtres-actifs" id="filtres-actifs">
+                            <?php if (!empty($max_price) || !empty($fuel_type)): ?>
                                 <span class="text-muted">Filtres actifs :</span>
                                 <?php if (!empty($max_price)): ?>
-                                    <span class="badge bg-info">Max <?= $max_price ?>€</span>
+                                    <span class="badge bg-info">Max <?= htmlspecialchars($max_price) ?>€</span>
                                 <?php endif; ?>
                                 <?php if (!empty($fuel_type)): ?>
-                                    <span class="badge bg-success"><?= ucfirst($fuel_type) ?></span>
+                                    <span class="badge bg-success"><?= ucfirst(htmlspecialchars($fuel_type)) ?></span>
                                 <?php endif; ?>
-                            </div>
-                        <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
 
-                    <?php if ($nombre_resultats > 0): ?>
-                        <!-- LISTE DES TRAJETS TROUVÉS -->
-                        <div class="trips-list">
-                            <?php foreach ($trips as $trip): ?>
-                                <div class="trip-card">
-                                    <div class="row align-items-center">
+                    <!-- ZONE DES RÉSULTATS (remplacée dynamiquement par search-trip.js) -->
+                    <div id="trips-results">
+                        <?php if ($nombre_resultats > 0): ?>
+                            <!-- LISTE DES TRAJETS TROUVÉS -->
+                            <div class="trips-list">
+                                <?php foreach ($trips as $trip): ?>
+                                    <div class="trip-card">
+                                        <div class="row align-items-center">
 
-                                        <!-- COLONNE 1: INFORMATIONS DU TRAJET -->
-                                        <div class="col-md-6">
-                                            <div class="trip-route">
-                                                <h4 class="route-cities">
-                                                    <?= htmlspecialchars($trip['departure_city']) ?>
-                                                    <i class="fas fa-arrow-right text-success"></i>
-                                                    <?= htmlspecialchars($trip['arrival_city']) ?>
-                                                </h4>
-                                                <p class="route-time">
-                                                    <i class="fas fa-calendar"></i>
-                                                    <?= date('d/m/Y', strtotime($trip['departure_time'])) ?>
-                                                    <span class="ms-2">
-                                                        <i class="fas fa-clock"></i>
-                                                        <?= date('H:i', strtotime($trip['departure_time'])) ?>
-                                                    </span>
-                                                </p>
+                                            <!-- COLONNE 1: INFORMATIONS DU TRAJET -->
+                                            <div class="col-md-6">
+                                                <div class="trip-route">
+                                                    <h4 class="route-cities">
+                                                        <?= htmlspecialchars($trip['departure_city']) ?>
+                                                        <i class="fas fa-arrow-right text-success"></i>
+                                                        <?= htmlspecialchars($trip['arrival_city']) ?>
+                                                    </h4>
+                                                    <p class="route-time">
+                                                        <i class="fas fa-calendar"></i>
+                                                        <?= date('d/m/Y', strtotime($trip['departure_time'])) ?>
+                                                        <span class="ms-2">
+                                                            <i class="fas fa-clock"></i>
+                                                            <?= date('H:i', strtotime($trip['departure_time'])) ?>
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <!-- COLONNE 2: CONDUCTEUR ET VÉHICULE -->
+                                            <div class="col-md-3">
+                                                <div class="trip-driver">
+                                                    <div class="driver-info">
+                                                        <div class="driver-avatar">
+                                                            <?= strtoupper(substr($trip['driver_name'], 0, 1)) ?>
+                                                        </div>
+
+                                                        <div class="driver-details">
+                                                            <strong><?= htmlspecialchars($trip['driver_name']) ?></strong>
+
+                                                            <div class="driver-rating">
+                                                                <span class="stars">★★★★☆</span>
+                                                                <span class="rating-text">4.2/5</span>
+                                                            </div>
+
+                                                            <div class="vehicle-info">
+                                                                <small class="text-muted">
+                                                                    <?= htmlspecialchars($trip['brand']) ?> <?= htmlspecialchars($trip['model']) ?>
+                                                                    <?php if ($trip['fuel_type'] === 'électrique'): ?>
+                                                                        <span class="eco-badge">⚡Éco</span>
+                                                                    <?php endif; ?>
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- COLONNE 3: PRIX ET NOMBRE DE PLACES -->
+                                            <div class="col-md-3 text-end">
+                                                <div class="trip-booking">
+                                                    <div class="trip-price">
+                                                        <span class="price-amount"><?= number_format($trip['price_per_seat'], 0) ?>€</span>
+                                                        <small class="price-label">par place</small>
+                                                    </div>
+                                                    <div class="trip-seats">
+                                                        <i class="fas fa-users"></i>
+                                                        <?= $trip['available_seats'] ?> place<?= $trip['available_seats'] > 1 ? 's' : '' ?>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <!-- COLONNE 2: CONDUCTEUR ET VÉHICULE -->
-                                        <div class="col-md-3">
-                                            <div class="trip-driver">
-                                                <div class="driver-info">
-                                                    <div class="driver-avatar">
-                                                        <?= strtoupper(substr($trip['driver_name'], 0, 1)) ?>
-                                                    </div>
-
-                                                    <div class="driver-details">
-                                                        <strong><?= htmlspecialchars($trip['driver_name']) ?></strong>
-
-                                                        <div class="driver-rating">
-                                                            <span class="stars">★★★★☆</span>
-                                                            <span class="rating-text">4.2/5</span>
-                                                        </div>
-
-                                                        <div class="vehicle-info">
+                                        <!-- SECTION BOTTOM: PRÉFÉRENCES + BOUTON -->
+                                        <?php if (!empty($trip['preferences'])): ?>
+                                            <div class="row mt-2">
+                                                <div class="col-12">
+                                                    <div class="trip-preferences">
+                                                        <div class="preferences-content">
                                                             <small class="text-muted">
-                                                                <?= htmlspecialchars($trip['brand']) ?> <?= htmlspecialchars($trip['model']) ?>
-                                                                <?php if ($trip['fuel_type'] === 'électrique'): ?>
-                                                                    <span class="eco-badge">⚡Éco</span>
-                                                                <?php endif; ?>
+                                                                <i class="fas fa-info-circle"></i>
+                                                                Préférences :
                                                             </small>
+                                                            <span class="preferences-badge" title="<?= htmlspecialchars($trip['preferences']) ?>">
+                                                                <?= htmlspecialchars($trip['preferences']) ?>
+                                                            </span>
                                                         </div>
+                                                        <a href="?page=detail&id=<?= $trip['id'] ?>"
+                                                            class="btn btn-outline-success btn-sm">
+                                                            <i class="fas fa-eye"></i> Voir détail
+                                                        </a>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        <!-- COLONNE 3: PRIX ET NOMBRE DE PLACES -->
-                                        <div class="col-md-3 text-end">
-                                            <div class="trip-booking">
-                                                <div class="trip-price">
-                                                    <span class="price-amount"><?= number_format($trip['price_per_seat'], 0) ?>€</span>
-                                                    <small class="price-label">par place</small>
-                                                </div>
-                                                <div class="trip-seats">
-                                                    <i class="fas fa-users"></i>
-                                                    <?= $trip['available_seats'] ?> place<?= $trip['available_seats'] > 1 ? 's' : '' ?>
+                                        <?php else: ?>
+                                            <div class="row mt-2">
+                                                <div class="col-12">
+                                                    <div class="trip-preferences">
+                                                        <div></div>
+                                                        <a href="?page=detail&id=<?= $trip['id'] ?>"
+                                                            class="btn btn-outline-success btn-sm">
+                                                            <i class="fas fa-eye"></i> Voir détail
+                                                        </a>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+
+                            <!-- AUCUN RÉSULTAT TROUVÉ -->
+                            <div class="no-results">
+                                <div class="text-center py-5">
+                                    <i class="fas fa-search fa-4x text-muted mb-4"></i>
+                                    <h4 class="text-muted mb-3">Aucun trajet trouvé</h4>
+                                    <p class="text-muted mb-4">
+                                        Nous n'avons pas trouvé de trajet correspondant à vos critères.
+                                        <br>Essayez de modifier vos filtres ou proposez votre propre trajet !
+                                    </p>
+
+                                    <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+                                        <button type="button" class="btn btn-outline-primary" onclick="clearFilters()">
+                                            <i class="fas fa-eraser"></i> Réinitialiser les filtres
+                                        </button>
+
+                                        <?php if (isLoggedIn()): ?>
+                                            <a href="?page=create-trip" class="btn btn-success">
+                                                <i class="fas fa-plus"></i> Proposer ce trajet
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="?page=login" class="btn btn-success">
+                                                <i class="fas fa-sign-in-alt"></i> Se connecter pour proposer
+                                            </a>
+                                        <?php endif; ?>
                                     </div>
 
-                                    <!-- SECTION BOTTOM: PRÉFÉRENCES + BOUTON -->
-                                    <?php if (!empty($trip['preferences'])): ?>
-                                        <div class="row mt-2">
-                                            <div class="col-12">
-                                                <div class="trip-preferences">
-                                                    <div class="preferences-content">
-                                                        <small class="text-muted">
-                                                            <i class="fas fa-info-circle"></i>
-                                                            Préférences :
-                                                        </small>
-                                                        <span class="preferences-badge" title="<?= htmlspecialchars($trip['preferences']) ?>">
-                                                            <?= htmlspecialchars($trip['preferences']) ?>
-                                                        </span>
-                                                    </div>
-                                                    <a href="?page=detail&id=<?= $trip['id'] ?>"
-                                                        class="btn btn-outline-success btn-sm">
-                                                        <i class="fas fa-eye"></i> Voir détail
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="row mt-2">
-                                            <div class="col-12">
-                                                <div class="trip-preferences">
-                                                    <div></div>
-                                                    <a href="?page=detail&id=<?= $trip['id'] ?>"
-                                                        class="btn btn-outline-success btn-sm">
-                                                        <i class="fas fa-eye"></i> Voir détail
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-
-                        <!-- AUCUN RÉSULTAT TROUVÉ -->
-                        <div class="no-results">
-                            <div class="text-center py-5">
-                                <i class="fas fa-search fa-4x text-muted mb-4"></i>
-                                <h4 class="text-muted mb-3">Aucun trajet trouvé</h4>
-                                <p class="text-muted mb-4">
-                                    Nous n'avons pas trouvé de trajet correspondant à vos critères.
-                                    <br>Essayez de modifier vos filtres ou proposez votre propre trajet !
-                                </p>
-
-                                <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
-                                    <button type="button" class="btn btn-outline-primary" onclick="clearFilters()">
-                                        <i class="fas fa-eraser"></i> Réinitialiser les filtres
-                                    </button>
-
-                                    <?php if (isLoggedIn()): ?>
-                                        <a href="?page=create-trip" class="btn btn-success">
-                                            <i class="fas fa-plus"></i> Proposer ce trajet
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="?page=login" class="btn btn-success">
-                                            <i class="fas fa-sign-in-alt"></i> Se connecter pour proposer
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-
-                                <hr class="my-4">
-                                <h6 class="text-muted">Suggestions populaires :</h6>
-                                <div class="d-flex flex-wrap gap-2 justify-content-center">
-                                    <a href="?page=search&depart=Paris&arrivee=Lyon" class="badge bg-light text-dark text-decoration-none">Paris → Lyon</a>
-                                    <a href="?page=search&depart=Marseille&arrivee=Nice" class="badge bg-light text-dark text-decoration-none">Marseille → Nice</a>
-                                    <a href="?page=search&depart=Bordeaux&arrivee=Toulouse" class="badge bg-light text-dark text-decoration-none">Bordeaux → Toulouse</a>
+                                    <hr class="my-4">
+                                    <h6 class="text-muted">Suggestions populaires :</h6>
+                                    <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                        <a href="?page=search&depart=Paris&arrivee=Lyon" class="badge bg-light text-dark text-decoration-none">Paris → Lyon</a>
+                                        <a href="?page=search&depart=Marseille&arrivee=Nice" class="badge bg-light text-dark text-decoration-none">Marseille → Nice</a>
+                                        <a href="?page=search&depart=Bordeaux&arrivee=Toulouse" class="badge bg-light text-dark text-decoration-none">Bordeaux → Toulouse</a>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    <?php endif; ?>
+                        <?php endif; ?>
+                    </div><!-- /#trips-results -->
                 </div>
             </div>
 
@@ -402,9 +408,7 @@ if (!empty($depart) && !empty($arrivee)) {
         <?php endif; ?>
     </div>
 </section>
-
-<?php
-/*
+<!-- /*
 ================================================
 FONCTIONNEMENT DU FICHIER SEARCH.PHP
 
@@ -442,4 +446,4 @@ AMÉLIORATIONS APPORTÉES :
 - Interface utilisateur cohérente et responsive
 ================================================
 */
-?>
+?> -->
